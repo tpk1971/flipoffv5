@@ -1,0 +1,38 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Flipoff (Flutter)",
+      "request": "launch",
+      "type": "dart",
+      "program": "${workspaceFolder}/flipoff/lib/main.dart",
+      "cwd": "${workspaceFolder}/flipoff"
+    },
+    {
+      "name": "Server (Node.js)",
+      "request": "launch",
+      "type": "node",
+      "runtimeArgs": [
+        "-r",
+        "ts-node/register"
+      ],
+      "args": [
+        "${workspaceFolder}/server/src/index.ts"
+      ],
+      "cwd": "${workspaceFolder}/server",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "envFile": "${workspaceFolder}/server/.env"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Full Stack (App + Server)",
+      "configurations": [
+        "Flipoff (Flutter)",
+        "Server (Node.js)"
+      ]
+    }
+  ]
+}
