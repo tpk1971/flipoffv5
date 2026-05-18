@@ -2,28 +2,37 @@ import 'package:flame/camera.dart';
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
 import 'package:flipoff/sprites/flipper_sprite.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:window_manager/window_manager.dart';
+import 'package:window_manager/window_manager.dart'
+    if (dart.library.io) 'package:window_manager/window_manager_io.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  if (!kIsWeb) {
+    await initWindows();
+  }
+
+  runApp(const MyApp());
+}
+
+Future<void> initWindows() async {
   await windowManager.ensureInitialized();
 
   WindowOptions windowOptions = const WindowOptions(
-    size: Size(540, 960),
+    size: Size(506, 900),
     center: true,
     backgroundColor: Colors.transparent,
     skipTaskbar: false,
     titleBarStyle: TitleBarStyle.normal,
   );
-  
+
   windowManager.waitUntilReadyToShow(windowOptions, () async {
     await windowManager.show();
     await windowManager.focus();
     await windowManager.setResizable(false);
   });
-
-  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
