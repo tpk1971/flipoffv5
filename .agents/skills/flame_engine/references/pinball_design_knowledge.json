@@ -1,0 +1,151 @@
+{
+  "title": "Pinball Design Knowledge Base",
+  "version": "1.0.0",
+  "summary": "Structured design patterns and implementation rules for physical, virtual, and fantasy pinball games, optimized for game development using the Flame Engine.",
+  "components": [
+    {
+      "name": "Flipper",
+      "category": "agency",
+      "dimensions": {
+        "standard_length_inches": 3.0
+      },
+      "behavior": "Solenoid-driven lever rotatable up to a physical limit stop. Returns via spring tension.",
+      "player_impact": "Primary control mechanism. Used for aiming, trapping (cradling), and passing.",
+      "implementation": {
+        "engine": "Forge2D",
+        "body_type": "dynamic",
+        "joint_type": "RevoluteJoint",
+        "control_mechanism": "High instantaneous torque application on press; spring-back torque on release."
+      }
+    },
+    {
+      "name": "Ramp",
+      "category": "flow",
+      "behavior": "Elevated 3D pathways that redirect the ball vertically and horizontally.",
+      "player_impact": "Maintains velocity, redirects ball back to opposite flipper, builds kinetic rhythm (flow).",
+      "implementation": {
+        "engine": "Forge2D",
+        "body_type": "static",
+        "collision_shape": "ChainShape or curved EdgeShapes",
+        "z_ordering": "Rendered on higher layer; collision mask active only when ball ascends entry ramp."
+      }
+    },
+    {
+      "name": "Orbit / Loop",
+      "category": "flow",
+      "behavior": "Outer boundary lanes looping the ball back to the upper playfield or flippers.",
+      "player_impact": "Sustains maximum speed and velocity loops.",
+      "implementation": {
+        "engine": "Forge2D",
+        "body_type": "static",
+        "collision_shape": "ChainShape"
+      }
+    },
+    {
+      "name": "Pop Bumper",
+      "category": "chaos",
+      "behavior": "Solenoid-activated circular skirt that fires outward with force upon ball contact.",
+      "player_impact": "Injects velocity and structural chaos, breaking deterministic paths.",
+      "implementation": {
+        "engine": "Forge2D",
+        "body_type": "static",
+        "collision_listener": "Detect contact, apply radial impulse vector to ball, play sound, trigger scale pulse animation."
+      }
+    },
+    {
+      "name": "Slingshot",
+      "category": "chaos",
+      "behavior": "Triangular kicker bands above the flippers activated by contact switches.",
+      "player_impact": "Pushes ball horizontally across flippers, threatening outlane drains.",
+      "implementation": {
+        "engine": "Forge2D",
+        "body_type": "static",
+        "collision_listener": "Apply normal impulse vector away from slingshot surface on contact."
+      }
+    },
+    {
+      "name": "Drop Target",
+      "category": "progression",
+      "behavior": "Vertical target cards that fall flat or drop into the playfield when hit.",
+      "player_impact": "Clear goals for ruleset progression, mode activation, and score multipliers.",
+      "implementation": {
+        "engine": "Forge2D",
+        "body_type": "kinematic",
+        "collision_listener": "Disable collision body upon hit, run retraction animation, update table state."
+      }
+    },
+    {
+      "name": "Bash Toy",
+      "category": "spectacle",
+      "behavior": "Interactive mechanical targets (e.g. moving bosses, opening chests) with custom animations.",
+      "player_impact": "Focal point of table themes; yields high rewards and satisfying kinetic feedback.",
+      "implementation": {
+        "engine": "Forge2D",
+        "body_type": "static / kinematic",
+        "collision_listener": "Track hit counts, play damage animations, toggle path gates."
+      }
+    }
+  ],
+  "techniques": [
+    {
+      "name": "Cradling",
+      "description": "Catching and holding the ball on an active flipper to stop momentum and set up shots.",
+      "physics_involved": "Frictional deceleration, gravity balance, flipper resting angle."
+    },
+    {
+      "name": "Dead Flipping",
+      "description": "Allowing a high-speed ball to bounce off an inactive flipper to absorb kinetic energy and roll to the opposite side.",
+      "physics_involved": "Restitution coefficient, material damping of flipper rubber."
+    },
+    {
+      "name": "Post-Passing",
+      "description": "Bouncing the ball from the tip of one raised flipper to the base of the other flipper.",
+      "physics_involved": "Angular momentum transfer, precise collision angle."
+    },
+    {
+      "name": "Nudging",
+      "description": "Shaking or shifting the cabinet to alter the ball's trajectory, avoiding the outlanes.",
+      "physics_involved": "Momentum transfer to dynamic body relative to static boundary frames."
+    }
+  ],
+  "rulesets": {
+    "modes": "Time-limited shot targets representing missions or stories.",
+    "multiball": "2-6 balls active concurrently with multiplied scoring structures.",
+    "stacking": "Concurrent activation of modes, multipliers, and multiballs for optimal points.",
+    "wizard_mode": "Ultimate state unlocked after beating all primary modes."
+  },
+  "fantasy_innovations": [
+    {
+      "feature": "Living Playfields",
+      "description": "Dynamic enemies moving across the field, changing layouts, and destructible geometry."
+    },
+    {
+      "feature": "Physics Alteration",
+      "description": "Air control (nudging/steering in mid-air), localized anti-gravity fields, magnetic traps, and speed portals."
+    },
+    {
+      "feature": "Progression & RPG",
+      "description": "Purchasable table modifications (upgraded flippers, ball shields), character health bars, and boss battles."
+    }
+  ],
+  "flame_engine_rules": {
+    "physics": {
+      "framework": "flame_forge2d",
+      "revolute_joint_torque": "Apply high impulse torque to simulate instant solenoid power.",
+      "collision_filtering": "Strict category bits to isolate ball, flippers, table walls, and sensors."
+    },
+    "inputs": {
+      "callbacks": "TapCallbacks on full-screen input zones or KeyboardEvents for responsive flipper triggering.",
+      "latency_target": "Sub-50ms reaction times to prevent control mismatch.",
+      "haptics": "Light impacts for bumpers/slingshots, medium impacts for flipper hit limits."
+    },
+    "camera": {
+      "fixed_aspect": "Vertical 9:16 layout locked inside a portrait viewport or center-letterboxed on landscape.",
+      "smooth_tracking": "Camera viewfinder follows the ball's Y-coordinate with a spring-damper interpolation."
+    },
+    "juice": {
+      "visuals": "Pop bumpers pulse in scale, spark particle systems on metal collisions, score callouts floating upwards.",
+      "time_dilation": "Brief slow-motion trigger when ball is extremely close to outlane drain to allow recovery."
+    }
+  }
+}

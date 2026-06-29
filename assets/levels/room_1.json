@@ -1,0 +1,20 @@
+{
+  "roomId": "room_1",
+  "name": "Gate Openers",
+  "spawnPosition": [4.5, 3.0],
+  "bumpers": [
+    {"x": 3.0, "y": 5.0, "radius": 0.5},
+    {"x": 6.0, "y": 5.0, "radius": 0.5}
+  ],
+  "targets": [
+    {"x": 2.0, "y": 8.0},
+    {"x": 4.5, "y": 8.5},
+    {"x": 7.0, "y": 8.0}
+  ],
+  "portal": {
+    "x": 4.5,
+    "y": 1.5,
+    "radius": 0.6,
+    "nextRoomId": "room_2"
+  }
+}
