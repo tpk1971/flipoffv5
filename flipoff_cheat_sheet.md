@@ -42,6 +42,17 @@ npx firebase-tools emulators:start
 *   **Firebase Auth Port:** `9099`
 *   **Cloud Functions Port:** `5001`
 
+### C. Start Android Phone Emulator:
+To launch the pre-configured Android emulator:
+
+```powershell
+# List available emulators to find the ID:
+flutter emulators
+
+# Launch the Android emulator (e.g., Medium Phone API 36.1):
+flutter emulators --launch Medium_Phone_API_36.1
+```
+
 ---
 
 ## 3. Communication Patterns (Getting the Best Out of Antigravity)

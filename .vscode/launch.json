@@ -1,0 +1,25 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Flipoff (Mobile Emulator & Emulators)",
+      "request": "launch",
+      "type": "dart",
+      "deviceId": "Medium_Phone_API_36.1",
+      "preLaunchTask": "Start Android & Firebase Emulators"
+    },
+    {
+      "name": "Flipoff (Mobile Emulator Only)",
+      "request": "launch",
+      "type": "dart",
+      "deviceId": "Medium_Phone_API_36.1",
+      "preLaunchTask": "Start Android Emulator"
+    },
+    {
+      "name": "Flipoff (Active Device & Emulators)",
+      "request": "launch",
+      "type": "dart",
+      "preLaunchTask": "Start Firebase Emulators"
+    }
+  ]
+}

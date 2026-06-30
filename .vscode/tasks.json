@@ -1,0 +1,44 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start Firebase Emulators",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-File",
+        "${workspaceFolder}/.agents/scripts/start_emulators.ps1"
+      ],
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "firebase",
+        "pattern": {
+          "regexp": "^.*$"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "Starting emulators...",
+          "endsPattern": "All emulators ready!"
+        }
+      }
+    },
+    {
+      "label": "Start Android Emulator",
+      "type": "shell",
+      "command": "flutter",
+      "args": [
+        "emulators",
+        "--launch",
+        "Medium_Phone_API_36.1"
+      ]
+    },
+    {
+      "label": "Start Android & Firebase Emulators",
+      "dependsOn": [
+        "Start Android Emulator",
+        "Start Firebase Emulators"
+      ],
+      "problemMatcher": []
+    }
+  ]
+}
