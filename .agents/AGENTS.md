@@ -12,4 +12,5 @@ Goal-driven execution. Turn vague instructions into verifiable targets before wr
 
 1. **DartDoc Documentation:** Every function, class, property, and parameter must be fully documented using `///` DartDoc comments. The documentation must be clear, detailed, and support IDE rollover tooltips so that a human developer can immediately understand the purpose, inputs, and outputs of the code.
 2. **Comprehensive Test Coverage:** Every feature must have a corresponding test script (unit, widget, or component tests). A feature is not considered implemented until all associated tests are written, executed, and passed successfully.
+3. **Emulator Verification:** Every task must be verified by terminating any active run task, rebuilding the application, and running it fresh on the active emulator to confirm that runtime behaviors execute correctly.
 
