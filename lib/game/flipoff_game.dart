@@ -6,6 +6,7 @@ import 'package:flutter/painting.dart' show Color;
 import 'package:flipoff/game/components/background_grid.dart';
 import 'package:flipoff/game/components/ball.dart';
 import 'package:flipoff/game/components/room_manager.dart';
+import 'package:flipoff/game/components/starfield.dart';
 
 /// The core Flame Forge2D game class for Flipoff: Snap.
 ///
@@ -50,6 +51,9 @@ class FlipoffGame extends Forge2DGame with TapCallbacks {
     // Center the camera viewfinder on the middle of the first 9x16 playfield
     camera.viewfinder.position = Vector2(4.5, 8.0);
     camera.viewfinder.anchor = Anchor.center;
+
+    // Add the parallax starfield component
+    await world.add(Starfield());
 
     // Add the background grid component
     await world.add(BackgroundGrid());
