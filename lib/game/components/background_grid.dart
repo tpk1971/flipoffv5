@@ -25,9 +25,25 @@ class BackgroundGrid extends PositionComponent with HasGameReference<FlipoffGame
   @override
   void render(Canvas canvas) {
     super.render(canvas);
+
+    // Get the dynamic theme color from the active game state
+    final themeColor = game.activeTheme.gridColor;
+    final paint = Paint()
+      ..colorFilter = ColorFilter.mode(themeColor, BlendMode.multiply);
+
     // Render the grid for Room 2 (Y: -16.0 to 0.0)
-    _sprite.render(canvas, position: Vector2(0.0, 0.0), size: Vector2(9.0, 16.0));
+    _sprite.render(
+      canvas,
+      position: Vector2(0.0, 0.0),
+      size: Vector2(9.0, 16.0),
+      overridePaint: paint,
+    );
     // Render the grid for Room 1 (Y: 0.0 to 16.0)
-    _sprite.render(canvas, position: Vector2(0.0, 16.0), size: Vector2(9.0, 16.0));
+    _sprite.render(
+      canvas,
+      position: Vector2(0.0, 16.0),
+      size: Vector2(9.0, 16.0),
+      overridePaint: paint,
+    );
   }
 }

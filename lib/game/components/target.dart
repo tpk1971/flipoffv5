@@ -57,6 +57,10 @@ class Target extends BodyComponent<FlipoffGame> with ContactCallbacks {
   @override
   void render(Canvas canvas) {
     super.render(canvas);
+    final themeColor = game.activeTheme.targetColor;
+    _paint.color = themeColor.withValues(alpha: 0.6); // Semi-transparent glass fill
+    _borderPaint.color = themeColor; // Full glowing neon border
+
     // Draw the core circle
     canvas.drawCircle(Offset.zero, 0.3, _paint);
     // Draw the neon glow border outline
@@ -68,12 +72,13 @@ class Target extends BodyComponent<FlipoffGame> with ContactCallbacks {
     super.beginContact(other, contact);
     if (other is Ball) {
       final pos = body.position.clone();
+      final themeColor = game.activeTheme.targetColor;
 
       // Spawn floating score popup
       game.world.add(ScorePopup(text: '+100', position: pos));
 
-      // Spawn radial spark particles
-      game.world.add(SparkParticleSystem(position: pos, color: const Color(0xFF00F5D4)));
+      // Spawn radial spark particles utilizing active theme color
+      game.world.add(SparkParticleSystem(position: pos, color: themeColor));
 
       // Trigger light haptic impact feedback
       HapticFeedback.lightImpact();

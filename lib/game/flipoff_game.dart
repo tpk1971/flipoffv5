@@ -24,6 +24,14 @@ class FlipoffGame extends Forge2DGame with TapCallbacks {
   /// Reference to the active room manager.
   late final RoomManager roomManager;
 
+  /// The active room theme config, defining 90's retro neon styling.
+  RoomTheme activeTheme = const RoomTheme(
+    gridColor: Color(0xFF00F5D4),   // Neon Cyan
+    bumperColor: Color(0xFFFF007F), // Neon Hot Pink
+    flipperColor: Color(0xFFFF9F1C), // Neon Orange
+    targetColor: Color(0xFF00F5D4),  // Cyan
+  );
+
   /// Target camera viewport center coordinates (for smooth vertical transitions).
   Vector2 cameraTargetPosition = Vector2(4.5, 8.0);
 
@@ -106,4 +114,27 @@ class FlipoffGame extends Forge2DGame with TapCallbacks {
       ball.body.angularVelocity = 0.0;
     }
   }
+}
+
+/// Defines a structured theme color palette for a room layout.
+class RoomTheme {
+  /// The color of the background playfield grid lines.
+  final Color gridColor;
+
+  /// The primary glowing color for bumpers.
+  final Color bumperColor;
+
+  /// The primary glowing color for flippers.
+  final Color flipperColor;
+
+  /// The primary glowing color for targets.
+  final Color targetColor;
+
+  /// Creates a room theme palette.
+  const RoomTheme({
+    required this.gridColor,
+    required this.bumperColor,
+    required this.flipperColor,
+    required this.targetColor,
+  });
 }

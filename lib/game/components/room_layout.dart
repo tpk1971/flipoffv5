@@ -1,3 +1,4 @@
+import 'dart:ui' show Color;
 import 'package:flame/components.dart';
 import 'package:flipoff/game/components/bumper.dart';
 import 'package:flipoff/game/components/double_wide_flipper.dart';
@@ -5,6 +6,7 @@ import 'package:flipoff/game/components/exit_portal.dart';
 import 'package:flipoff/game/components/gutter_sensor.dart';
 import 'package:flipoff/game/components/playfield_boundaries.dart';
 import 'package:flipoff/game/components/target.dart';
+import 'package:flipoff/game/flipoff_game.dart';
 
 /// A container component representing the full physical layout of a single chamber.
 ///
@@ -16,6 +18,9 @@ class RoomLayout extends Component {
 
   /// The parsed configuration properties for this room.
   final Map<String, dynamic> config;
+
+  /// The color theme palette for this room.
+  late final RoomTheme theme;
 
   /// Creates a room layout component.
   RoomLayout({
@@ -35,6 +40,19 @@ class RoomLayout extends Component {
   @override
   Future<void> onLoad() async {
     await super.onLoad();
+
+    // Parse custom retro 90's room theme color palette from config or defaults
+    final gridHex = config['gridColor'] as String? ?? (roomIndex == 0 ? '#00F5D4' : '#9D4EDD');
+    final bumperHex = config['bumperColor'] as String? ?? (roomIndex == 0 ? '#FF007F' : '#39FF14');
+    final flipperHex = config['flipperColor'] as String? ?? (roomIndex == 0 ? '#FF9F1C' : '#00F5D4');
+    final targetHex = config['targetColor'] as String? ?? (roomIndex == 0 ? '#FFD166' : '#FF007F');
+
+    theme = RoomTheme(
+      gridColor: Color(int.parse(gridHex.replaceAll('#', '0xFF'))),
+      bumperColor: Color(int.parse(bumperHex.replaceAll('#', '0xFF'))),
+      flipperColor: Color(int.parse(flipperHex.replaceAll('#', '0xFF'))),
+      targetColor: Color(int.parse(targetHex.replaceAll('#', '0xFF'))),
+    );
 
     // Add boundaries with offset
     await add(PlayfieldBoundaries(yOffset: yOffset));

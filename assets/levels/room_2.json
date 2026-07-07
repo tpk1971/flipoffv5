@@ -1,6 +1,7 @@
 {
   "roomId": "room_2",
   "name": "Bumper Bounce",
+  "themeColor": "#9D4EDD",
   "spawnPosition": [4.5, 3.0],
   "bumpers": [
     {"x": 4.5, "y": 6.0, "radius": 0.6}

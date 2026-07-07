@@ -1,11 +1,12 @@
 import 'dart:ui';
 import 'package:flame_forge2d/flame_forge2d.dart';
+import 'package:flipoff/game/flipoff_game.dart';
 
 /// The pinball component representing the ball in play.
 ///
 /// This component creates a dynamic circular physical body in the Forge2D world,
 /// with predefined density, friction, and restitution (bounciness).
-class Ball extends BodyComponent {
+class Ball extends BodyComponent<FlipoffGame> {
   /// Creates a ball component at the specified initial [initialPosition].
   Ball({required this.initialPosition});
 
@@ -59,6 +60,26 @@ class Ball extends BodyComponent {
 
   @override
   void render(Canvas canvas) {
+    // Get the dynamic active theme color
+    final themeColor = game.activeTheme.flipperColor;
+
+    // Dynamically rebuild the radial gradient shader to reflect the active room theme color
+    _chromePaint.shader = Gradient.radial(
+      Offset.zero,
+      0.25,
+      [
+        const Color(0xFFFFFFFF), // Specular reflection point
+        const Color(0xFFE2EAFC), // Chrome light body
+        themeColor,              // Dynamic theme neon reflection highlight
+        themeColor.withValues(alpha: 0.2), // Dynamic shadow base
+        const Color(0xFF0D0E15), // Dark shadow edge
+      ],
+      const [0.0, 0.15, 0.5, 0.85, 1.0],
+      TileMode.clamp,
+      null,
+      const Offset(-0.08, -0.08),
+    );
+
     // Draw the chrome marble circle, overriding default wireframe rendering
     canvas.drawCircle(Offset.zero, 0.25, _chromePaint);
   }

@@ -2,12 +2,13 @@ import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
+import 'package:flipoff/game/flipoff_game.dart';
 
 /// An asymmetrical single flipper pivoted on the left.
 ///
 /// This component creates a dynamic, tapered flipper body and anchors it to
 /// a static body in the world via a [RevoluteJoint] with motor controls and angle limits.
-class DoubleWideFlipper extends BodyComponent {
+class DoubleWideFlipper extends BodyComponent<FlipoffGame> {
   /// Creates a flipper component at the specified pivot [initialPosition].
   ///
   /// [length] determines how far the flipper extends to the right.
@@ -135,6 +136,11 @@ class DoubleWideFlipper extends BodyComponent {
 
   @override
   void render(Canvas canvas) {
+    // Get the dynamic theme color
+    final themeColor = game.activeTheme.flipperColor;
+    _borderPaint.color = themeColor;
+    _glowPaint.color = themeColor.withValues(alpha: 0.3);
+
     // Construct the path representing the tapered flipper body
     final path = Path()
       ..moveTo(0, -leftRadius)

@@ -114,6 +114,11 @@ class Bumper extends BodyComponent<FlipoffGame> with ContactCallbacks {
 
   @override
   void render(Canvas canvas) {
+    // Get the dynamic theme color
+    final themeColor = game.activeTheme.bumperColor;
+    _borderPaint.color = themeColor;
+    _paint.color = themeColor.withValues(alpha: 0.15);
+
     canvas.save();
     // Scale drawings around center pivot (Offset.zero)
     canvas.scale(_pulseScale);
@@ -124,7 +129,7 @@ class Bumper extends BodyComponent<FlipoffGame> with ContactCallbacks {
     // Render additional neon glow shadow if recently struck
     if (_pulseGlow > 0.0) {
       final glowPaint = Paint()
-        ..color = const Color(0x6600F5D4)
+        ..color = themeColor.withValues(alpha: 0.4)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 0.15 * _pulseGlow
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 0.05);

@@ -90,6 +90,7 @@ class RoomManager extends Component with HasGameReference<FlipoffGame> {
     final layout = RoomLayout(roomIndex: roomIndex, config: config);
     await game.world.add(layout);
     _activeLayout = layout;
+    game.activeTheme = layout.theme;
 
     if (_remainingTargets == 0) {
       layout.portal.unlock();
@@ -123,6 +124,7 @@ class RoomManager extends Component with HasGameReference<FlipoffGame> {
     final newLayout = RoomLayout(roomIndex: roomIndex, config: config);
     await game.world.add(newLayout);
     _activeLayout = newLayout;
+    game.activeTheme = newLayout.theme;
 
     if (_remainingTargets == 0) {
       newLayout.portal.unlock();

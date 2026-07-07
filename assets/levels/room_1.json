@@ -1,6 +1,7 @@
 {
   "roomId": "room_1",
   "name": "Gate Openers",
+  "themeColor": "#00F5D4",
   "spawnPosition": [4.5, 3.0],
   "bumpers": [
     {"x": 3.0, "y": 5.0, "radius": 0.5},
