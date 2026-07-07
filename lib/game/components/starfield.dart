@@ -43,13 +43,13 @@ class Starfield extends PositionComponent with HasGameReference<FlipoffGame> {
     _paint = Paint()..style = PaintingStyle.fill;
 
     // Layer 1: Deep Space (Slowest, smallest)
-    _generateLayer(count: 30, minRadius: 0.03, maxRadius: 0.05, speed: 0.2, baseOpacity: 0.4);
+    _generateLayer(count: 30, minRadius: 0.021, maxRadius: 0.035, speed: 0.2, baseOpacity: 0.25);
 
     // Layer 2: Mid Space (Medium)
-    _generateLayer(count: 20, minRadius: 0.06, maxRadius: 0.09, speed: 0.4, baseOpacity: 0.6);
+    _generateLayer(count: 20, minRadius: 0.042, maxRadius: 0.063, speed: 0.4, baseOpacity: 0.45);
 
     // Layer 3: Near Space (Fastest, largest)
-    _generateLayer(count: 10, minRadius: 0.10, maxRadius: 0.15, speed: 0.7, baseOpacity: 0.85);
+    _generateLayer(count: 10, minRadius: 0.07, maxRadius: 0.105, speed: 0.7, baseOpacity: 0.65);
   }
 
   void _generateLayer({
