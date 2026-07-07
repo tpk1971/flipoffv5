@@ -5,14 +5,14 @@
       "name": "Flipoff (Mobile Emulator & Emulators)",
       "request": "launch",
       "type": "dart",
-      "deviceId": "Medium_Phone_API_36.1",
+      "deviceId": "Pixel_9",
       "preLaunchTask": "Start Android & Firebase Emulators"
     },
     {
       "name": "Flipoff (Mobile Emulator Only)",
       "request": "launch",
       "type": "dart",
-      "deviceId": "Medium_Phone_API_36.1",
+      "deviceId": "Pixel_9",
       "preLaunchTask": "Start Android Emulator"
     },
     {

@@ -29,7 +29,7 @@
       "args": [
         "emulators",
         "--launch",
-        "Medium_Phone_API_36.1"
+        "Pixel_9"
       ]
     },
     {

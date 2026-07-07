@@ -1,6 +1,7 @@
 import 'dart:math' as math;
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flame_forge2d/flame_forge2d.dart';
+import 'package:flame/game.dart';
 import 'package:flipoff/game/flipoff_game.dart';
 
 void main() {
@@ -8,11 +9,22 @@ void main() {
 
   testWidgets('Flipper joint angles should stay strictly within limits', (WidgetTester tester) async {
     final game = FlipoffGame();
+    await tester.pumpWidget(
+      MediaQuery(
+        data: const MediaQueryData(size: Size(900, 1600)),
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: GameWidget(game: game),
+        ),
+      ),
+    );
+    await tester.pump();
 
-    // Trigger async load and lifecycle initialization
-    await game.onLoad();
-    game.onGameResize(Vector2(900, 1600));
-    game.onMount();
+    // Allow async assets to load and children components to mount
+    for (int i = 0; i < 10; i++) {
+      game.update(0.016);
+      await tester.pump(const Duration(milliseconds: 16));
+    }
 
     // Verify flipper was successfully loaded and added
     expect(game.roomManager.activeLayout?.flipper, isNotNull);

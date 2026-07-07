@@ -43,7 +43,10 @@ class RoomLayout extends Component {
     await add(GutterSensor(yOffset: yOffset));
 
     // Add asymmetrical flipper with offset
-    flipper = DoubleWideFlipper(initialPosition: Vector2(1.5, 13.5 + yOffset));
+    flipper = DoubleWideFlipper(
+      initialPosition: Vector2(1.5, 13.5 + yOffset),
+      length: 6.0,
+    );
     await add(flipper);
 
     // Add bumpers

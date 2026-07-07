@@ -49,8 +49,8 @@ To launch the pre-configured Android emulator:
 # List available emulators to find the ID:
 flutter emulators
 
-# Launch the Android emulator (e.g., Medium Phone API 36.1):
-flutter emulators --launch Medium_Phone_API_36.1
+# Launch the Android emulator (e.g., Pixel 9):
+flutter emulators --launch Pixel_9
 ```
 
 ---

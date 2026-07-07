@@ -1,22 +1,37 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
+import 'package:flame/game.dart';
 import 'package:flipoff/game/flipoff_game.dart';
 import 'package:flipoff/game/components/bumper.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('Ball Spin Physics and Deflection Tests', () {
-    late FlipoffGame game;
+  Future<FlipoffGame> setUpGame(WidgetTester tester) async {
+    final game = FlipoffGame();
+    await tester.pumpWidget(
+      MediaQuery(
+        data: const MediaQueryData(size: Size(900, 1600)),
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: GameWidget(game: game),
+        ),
+      ),
+    );
+    await tester.pump();
+    for (int i = 0; i < 10; i++) {
+      game.update(0.016);
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    return game;
+  }
 
-    setUp(() async {
-      game = FlipoffGame();
-      await game.onLoad();
-      game.onGameResize(Vector2(900, 1600));
-      game.onMount();
-    });
+  group('Ball Spin Physics and Deflection Tests', () {
 
     testWidgets('Zero-Spin Control: ball drops vertically and bounces straight up', (WidgetTester tester) async {
+      final game = await setUpGame(tester);
+
       // 1. Create a flat horizontal static floor at y = 10.0
       final floorDef = BodyDef()..type = BodyType.static;
       final floorBody = game.world.createBody(floorDef);
@@ -39,6 +54,8 @@ void main() {
     });
 
     testWidgets('Spin Deflection: spinning ball drops vertically and bounces laterally', (WidgetTester tester) async {
+      final game = await setUpGame(tester);
+
       // 1. Create a flat horizontal static floor at y = 10.0
       final floorDef = BodyDef()..type = BodyType.static;
       final floorBody = game.world.createBody(floorDef);
@@ -62,6 +79,8 @@ void main() {
     });
 
     testWidgets('Bumper Scatter: perfectly vertical collision triggers spin and breaks loop symmetry', (WidgetTester tester) async {
+      final game = await setUpGame(tester);
+
       // 1. Spawn a bumper at (4.5, 6.0) in the world
       final bumper = Bumper(initialPosition: Vector2(4.5, 6.0), radius: 0.6);
       await game.world.add(bumper);

@@ -1,4 +1,5 @@
 import 'package:flame_forge2d/flame_forge2d.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flipoff/game/components/ball.dart';
 import 'package:flipoff/game/flipoff_game.dart';
 
@@ -37,6 +38,8 @@ class GutterSensor extends BodyComponent<FlipoffGame> with ContactCallbacks {
   void beginContact(Object other, Contact contact) {
     super.beginContact(other, contact);
     if (other is Ball) {
+      // Trigger a heavy rumble haptic on gutter drain
+      HapticFeedback.heavyImpact();
       game.requestBallReset();
     }
   }

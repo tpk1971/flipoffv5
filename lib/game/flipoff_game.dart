@@ -2,6 +2,8 @@ import 'dart:math' as math;
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
+import 'package:flutter/painting.dart' show Color;
+import 'package:flipoff/game/components/background_grid.dart';
 import 'package:flipoff/game/components/ball.dart';
 import 'package:flipoff/game/components/room_manager.dart';
 
@@ -12,6 +14,9 @@ import 'package:flipoff/game/components/room_manager.dart';
 class FlipoffGame extends Forge2DGame with TapCallbacks {
   /// Initializes the game with the design spec gravity of 7.5.
   FlipoffGame() : super(gravity: Vector2(0, 7.5));
+
+  @override
+  Color backgroundColor() => const Color(0xFF0D0E15);
 
   /// Reference to the active pinball.
   late final Ball ball;
@@ -37,6 +42,9 @@ class FlipoffGame extends Forge2DGame with TapCallbacks {
     // Center the camera viewfinder on the middle of the first 9x16 playfield
     camera.viewfinder.position = Vector2(4.5, 8.0);
     camera.viewfinder.anchor = Anchor.center;
+
+    // Add the background grid component
+    await world.add(BackgroundGrid());
 
     // Spawn the persistent ball
     ball = Ball(initialPosition: Vector2(4.5, 3.0));

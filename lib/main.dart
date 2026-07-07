@@ -1,12 +1,11 @@
-import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flame/game.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flipoff/game/flipoff_game.dart';
+import 'package:flipoff/game/splash_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,7 +22,7 @@ void main() async {
   await Firebase.initializeApp(options: firebaseOptions);
 
   // Connect Firebase clients to local emulators
-  final host = !kIsWeb && Platform.isAndroid ? '10.0.2.2' : 'localhost';
+  const host = '127.0.0.1';
   try {
     FirebaseFirestore.instance.useFirestoreEmulator(host, 8080);
     await FirebaseAuth.instance.useAuthEmulator(host, 9099);
@@ -54,7 +53,7 @@ class MyApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const PlayfieldPage(),
+      home: const SplashPage(),
     );
   }
 }

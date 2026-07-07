@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flame_forge2d/flame_forge2d.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flipoff/game/components/ball.dart';
 import 'package:flipoff/game/flipoff_game.dart';
 
@@ -20,23 +21,31 @@ class Bumper extends BodyComponent<FlipoffGame> with ContactCallbacks {
     required this.radius,
   });
 
-  /// The glassmorphic fill paint for the bumper.
+  /// The glassmorphic fill paint for the bumper (Teal Base).
   late final Paint _paint;
 
   /// The glowing neon border paint.
   late final Paint _borderPaint;
 
+  /// Current visual scale of the bumper for pulsing effect.
+  double _pulseScale = 1.0;
+
+  /// Current glow intensity decay factor.
+  double _pulseGlow = 0.0;
+
   @override
   Future<void> onLoad() async {
     await super.onLoad();
+
+    // Active Neon Teal base color palette: #240046 (deep purple) / #00F5D4 (glowing teal)
     _paint = Paint()
-      ..color = const Color(0x889B5DE5) // Translucent Neon Violet
+      ..color = const Color(0xCC240046) // Semi-transparent deep violet-purple base
       ..style = PaintingStyle.fill;
 
     _borderPaint = Paint()
-      ..color = const Color(0xFFFF2E93) // Neon Pink border
+      ..color = const Color(0xFF00F5D4) // Neon Teal border
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.05;
+      ..strokeWidth = 0.06;
   }
 
   @override
@@ -58,9 +67,31 @@ class Bumper extends BodyComponent<FlipoffGame> with ContactCallbacks {
   }
 
   @override
+  void update(double dt) {
+    super.update(dt);
+    // Smoothly decay pulse scaling back to default (1.0)
+    if (_pulseScale > 1.0) {
+      _pulseScale -= 4.0 * dt;
+      if (_pulseScale < 1.0) _pulseScale = 1.0;
+    }
+    // Smoothly decay the glow intensity back to zero
+    if (_pulseGlow > 0.0) {
+      _pulseGlow -= 4.0 * dt;
+      if (_pulseGlow < 0.0) _pulseGlow = 0.0;
+    }
+  }
+
+  @override
   void beginContact(Object other, Contact contact) {
     super.beginContact(other, contact);
     if (other is Ball) {
+      // Trigger visual scaling pulse and glow highlight
+      _pulseScale = 1.25;
+      _pulseGlow = 1.0;
+
+      // Haptic bump collision feedback
+      HapticFeedback.lightImpact();
+
       final bumperPos = body.position;
       final ballPos = other.body.position;
       final normal = (ballPos - bumperPos).normalized();
@@ -83,10 +114,25 @@ class Bumper extends BodyComponent<FlipoffGame> with ContactCallbacks {
 
   @override
   void render(Canvas canvas) {
-    super.render(canvas);
+    canvas.save();
+    // Scale drawings around center pivot (Offset.zero)
+    canvas.scale(_pulseScale);
+
     // Draw the core bumper fill
     canvas.drawCircle(Offset.zero, radius, _paint);
+
+    // Render additional neon glow shadow if recently struck
+    if (_pulseGlow > 0.0) {
+      final glowPaint = Paint()
+        ..color = const Color(0x6600F5D4)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.15 * _pulseGlow
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 0.05);
+      canvas.drawCircle(Offset.zero, radius, glowPaint);
+    }
+
     // Draw the active glowing border
     canvas.drawCircle(Offset.zero, radius, _borderPaint);
+    canvas.restore();
   }
 }
