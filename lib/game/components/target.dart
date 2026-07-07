@@ -14,8 +14,14 @@ class Target extends BodyComponent<FlipoffGame> with ContactCallbacks {
   /// The local position of this target in the room's coordinate system.
   final Vector2 initialPosition;
 
+  /// Whether this target contains a bonus life.
+  final bool isBonusLife;
+
   /// Creates a target component at the specified [initialPosition].
-  Target({required this.initialPosition});
+  Target({
+    required this.initialPosition,
+    this.isBonusLife = false,
+  });
 
   /// The glassmorphic/neon fill paint for the target.
   late final Paint _paint;
@@ -57,7 +63,8 @@ class Target extends BodyComponent<FlipoffGame> with ContactCallbacks {
   @override
   void render(Canvas canvas) {
     super.render(canvas);
-    final themeColor = game.activeTheme.targetColor;
+    // Draw bonus targets in vibrant neon green, standard targets in the active room theme color
+    final themeColor = isBonusLife ? const Color(0xFF00FF66) : game.activeTheme.targetColor;
     _paint.color = themeColor.withValues(alpha: 0.6); // Semi-transparent glass fill
     _borderPaint.color = themeColor; // Full glowing neon border
 
@@ -72,10 +79,23 @@ class Target extends BodyComponent<FlipoffGame> with ContactCallbacks {
     super.beginContact(other, contact);
     if (other is Ball) {
       final pos = body.position.clone();
-      final themeColor = game.activeTheme.targetColor;
+      final themeColor = isBonusLife ? const Color(0xFF00FF66) : game.activeTheme.targetColor;
 
-      // Spawn floating score popup
-      game.world.add(ScorePopup(text: '+100', position: pos));
+      // Award base score
+      game.scoreNotifier.value += 100;
+
+      if (isBonusLife) {
+        if (game.livesNotifier.value < 15) {
+          game.livesNotifier.value++;
+          game.world.add(ScorePopup(text: '+1 LIFE', position: pos));
+        } else {
+          // Max lives bonus points
+          game.scoreNotifier.value += 500;
+          game.world.add(ScorePopup(text: '+500 MAX LIVES', position: pos));
+        }
+      } else {
+        game.world.add(ScorePopup(text: '+100', position: pos));
+      }
 
       // Spawn radial spark particles utilizing active theme color
       game.world.add(SparkParticleSystem(position: pos, color: themeColor));

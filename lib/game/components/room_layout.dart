@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui' show Color;
 import 'package:flame/components.dart';
 import 'package:flipoff/game/components/bumper.dart';
@@ -83,12 +84,24 @@ class RoomLayout extends Component {
 
     // Add targets
     final targetsList = config['targets'] as List<dynamic>? ?? [];
-    for (final targetData in targetsList) {
+    final math.Random random = math.Random();
+    final bonusIndices = <int>{};
+    if (targetsList.isNotEmpty) {
+      final int numBonus = math.min(3, targetsList.length);
+      while (bonusIndices.length < numBonus) {
+        bonusIndices.add(random.nextInt(targetsList.length));
+      }
+    }
+
+    for (int i = 0; i < targetsList.length; i++) {
+      final targetData = targetsList[i];
       final x = (targetData['x'] as num).toDouble();
       final y = (targetData['y'] as num).toDouble();
+      final isBonusLife = bonusIndices.contains(i);
       await add(
         Target(
           initialPosition: Vector2(x, y + yOffset),
+          isBonusLife: isBonusLife,
         ),
       );
     }

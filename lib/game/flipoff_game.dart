@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
+import 'package:flutter/foundation.dart' show ValueNotifier;
 import 'package:flutter/painting.dart' show Color;
 import 'package:flipoff/game/components/background_grid.dart';
 import 'package:flipoff/game/components/ball.dart';
@@ -32,6 +33,27 @@ class FlipoffGame extends Forge2DGame with TapCallbacks {
     flipperColor: Color(0xFFFF9F1C), // Neon Orange
     targetColor: Color(0xFF00F5D4),  // Cyan
   );
+
+  /// The player's current score, tracked reactively.
+  final ValueNotifier<int> scoreNotifier = ValueNotifier<int>(0);
+
+  /// The player's remaining lives. Starts at 10, max 15.
+  final ValueNotifier<int> livesNotifier = ValueNotifier<int>(10);
+
+  /// Whether the game is currently in a game-over state.
+  final ValueNotifier<bool> isGameOverNotifier = ValueNotifier<bool>(false);
+
+  /// Resets the game to its initial state, clearing score, setting lives to 10,
+  /// clearing the game over state, and reloading the first room.
+  void resetGame() {
+    scoreNotifier.value = 0;
+    livesNotifier.value = 10;
+    isGameOverNotifier.value = false;
+    overlays.remove('gameOver');
+
+    // Reset ball position and reload Room 1
+    roomManager.requestRoomTransition('room_1');
+  }
 
   /// Target camera viewport center coordinates (for smooth vertical transitions).
   Vector2 cameraTargetPosition = Vector2(4.5, 8.0);
@@ -79,18 +101,21 @@ class FlipoffGame extends Forge2DGame with TapCallbacks {
 
   @override
   void onTapDown(TapDownEvent event) {
+    if (isGameOverNotifier.value) return;
     super.onTapDown(event);
     roomManager.activeLayout?.flipper.activate();
   }
 
   @override
   void onTapUp(TapUpEvent event) {
+    if (isGameOverNotifier.value) return;
     super.onTapUp(event);
     roomManager.activeLayout?.flipper.deactivate();
   }
 
   @override
   void onTapCancel(TapCancelEvent event) {
+    if (isGameOverNotifier.value) return;
     super.onTapCancel(event);
     roomManager.activeLayout?.flipper.deactivate();
   }
@@ -106,16 +131,33 @@ class FlipoffGame extends Forge2DGame with TapCallbacks {
     if (_shouldResetBall) {
       _shouldResetBall = false;
 
-      final roomIndex = roomManager.currentRoomId == 'room_1' ? 0 : 1;
-      final yOffset = roomIndex * -16.0;
+      // Deduct one life
+      if (livesNotifier.value > 0) {
+        livesNotifier.value--;
+      }
 
-      final spawnPos = roomManager.activeLayout?.config['spawnPosition'] as List<dynamic>?;
-      final sx = spawnPos != null ? (spawnPos[0] as num).toDouble() : 4.5;
-      final sy = spawnPos != null ? (spawnPos[1] as num).toDouble() : 3.0;
+      if (livesNotifier.value == 0) {
+        // Trigger Game Over
+        isGameOverNotifier.value = true;
+        overlays.add('gameOver');
 
-      ball.body.setTransform(Vector2(sx, sy + yOffset), 0.0);
-      ball.body.linearVelocity = Vector2.zero();
-      ball.body.angularVelocity = 0.0;
+        // Park the ball off-screen with no speed to prevent collisions
+        ball.body.setTransform(Vector2(-100.0, -100.0), 0.0);
+        ball.body.linearVelocity = Vector2.zero();
+        ball.body.angularVelocity = 0.0;
+      } else {
+        // Reset the ball to the active room's spawn coordinate
+        final roomIndex = roomManager.currentRoomId == 'room_1' ? 0 : 1;
+        final yOffset = roomIndex * -16.0;
+
+        final spawnPos = roomManager.activeLayout?.config['spawnPosition'] as List<dynamic>?;
+        final sx = spawnPos != null ? (spawnPos[0] as num).toDouble() : 4.5;
+        final sy = spawnPos != null ? (spawnPos[1] as num).toDouble() : 3.0;
+
+        ball.body.setTransform(Vector2(sx, sy + yOffset), 0.0);
+        ball.body.linearVelocity = Vector2.zero();
+        ball.body.angularVelocity = 0.0;
+      }
     }
   }
 }
