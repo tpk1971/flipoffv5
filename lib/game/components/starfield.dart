@@ -23,8 +23,9 @@ class _Star {
 /// Stars scroll slowly downwards, wrapping vertically from bottom to top,
 /// and dynamically tint to the active room's grid theme color.
 class Starfield extends PositionComponent with HasGameReference<FlipoffGame> {
-  /// Creates the parallax starfield component.
-  Starfield() : super(priority: -150);
+  /// Creates the parallax starfield component, rendering on top of the grid (priority -95)
+  /// but behind all physical elements (priority 0).
+  Starfield() : super(priority: -95);
 
   /// The list of stars to scroll and render.
   final List<_Star> _stars = [];
@@ -42,13 +43,13 @@ class Starfield extends PositionComponent with HasGameReference<FlipoffGame> {
     _paint = Paint()..style = PaintingStyle.fill;
 
     // Layer 1: Deep Space (Slowest, smallest)
-    _generateLayer(count: 30, minRadius: 0.02, maxRadius: 0.04, speed: 0.1, baseOpacity: 0.3);
+    _generateLayer(count: 30, minRadius: 0.03, maxRadius: 0.05, speed: 0.2, baseOpacity: 0.4);
 
     // Layer 2: Mid Space (Medium)
-    _generateLayer(count: 20, minRadius: 0.05, maxRadius: 0.07, speed: 0.25, baseOpacity: 0.5);
+    _generateLayer(count: 20, minRadius: 0.06, maxRadius: 0.09, speed: 0.4, baseOpacity: 0.6);
 
     // Layer 3: Near Space (Fastest, largest)
-    _generateLayer(count: 10, minRadius: 0.08, maxRadius: 0.12, speed: 0.5, baseOpacity: 0.8);
+    _generateLayer(count: 10, minRadius: 0.10, maxRadius: 0.15, speed: 0.7, baseOpacity: 0.85);
   }
 
   void _generateLayer({
