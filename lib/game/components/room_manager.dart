@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flame/components.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flipoff/game/components/room_layout.dart';
+import 'package:flipoff/game/components/level_up_popup.dart';
 import 'package:flipoff/game/flipoff_game.dart';
 
 /// A manager component that coordinates level configurations and room transitions.
@@ -38,6 +39,18 @@ class RoomManager extends Component with HasGameReference<FlipoffGame> {
 
   /// Cached configuration map to load during the next update cycle.
   Map<String, dynamic>? _nextRoomConfig;
+
+  /// Delayed spawn timer for Level Up transition (in seconds).
+  double _levelUpTimeRemaining = 0.0;
+
+  /// Deferred ball spawn X coordinate.
+  double _deferredSpawnX = 4.5;
+
+  /// Deferred ball spawn Y coordinate.
+  double _deferredSpawnY = 3.0;
+
+  /// Deferred ball spawn room index.
+  int _deferredRoomIndex = 0;
 
   @override
   Future<void> onLoad() async {
@@ -133,14 +146,21 @@ class RoomManager extends Component with HasGameReference<FlipoffGame> {
     // Position camera Y coordinate
     game.cameraTargetPosition = Vector2(4.5, 8.0 + roomIndex * -16.0);
 
-    // Reposition ball
+    // Parse spawn position and cache it to defer ball spawning
     final spawnPos = config['spawnPosition'] as List<dynamic>;
-    final sx = (spawnPos[0] as num).toDouble();
-    final sy = (spawnPos[1] as num).toDouble();
+    _deferredSpawnX = (spawnPos[0] as num).toDouble();
+    _deferredSpawnY = (spawnPos[1] as num).toDouble();
+    _deferredRoomIndex = roomIndex;
+    _levelUpTimeRemaining = 2.0;
 
-    game.ball.body.setTransform(Vector2(sx, sy + roomIndex * -16.0), 0.0);
+    // Hide/park the ball off-screen with no speed to prevent early collision
+    game.ball.body.setTransform(Vector2(-100.0, -100.0), 0.0);
     game.ball.body.linearVelocity = Vector2.zero();
     game.ball.body.angularVelocity = 0.0;
+
+    // Spawn congratulations "LEVEL UP!" popup text in center of viewport
+    final centerPos = Vector2(4.5, 8.0 + roomIndex * -16.0);
+    game.world.add(LevelUpPopup(position: centerPos));
 
     // Remove old layout
     if (oldLayout != null) {
@@ -151,6 +171,20 @@ class RoomManager extends Component with HasGameReference<FlipoffGame> {
   @override
   void update(double dt) {
     super.update(dt);
+
+    // Handle delayed Level Up transition timer
+    if (_levelUpTimeRemaining > 0.0) {
+      _levelUpTimeRemaining -= dt;
+      if (_levelUpTimeRemaining <= 0.0) {
+        // Deployed text has disappeared, restore and launch the ball!
+        game.ball.body.setTransform(Vector2(_deferredSpawnX, _deferredSpawnY + _deferredRoomIndex * -16.0), 0.0);
+        game.ball.body.linearVelocity = Vector2.zero();
+        game.ball.body.angularVelocity = 0.0;
+        
+        // Reset and activate the 5-second gutter protection shield
+        game.ballSaverTimeRemaining = 5.0;
+      }
+    }
 
     // Process queued room transition safely inside the update loop (unlocked physics state)
     if (_shouldLoadNextRoom && _nextRoomIdToLoad != null && _nextRoomConfig != null) {

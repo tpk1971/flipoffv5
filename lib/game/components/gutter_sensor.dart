@@ -1,6 +1,7 @@
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flipoff/game/components/ball.dart';
+import 'package:flipoff/game/components/score_popup.dart';
 import 'package:flipoff/game/flipoff_game.dart';
 
 /// A sensor component positioned in the gutter drain opening at the bottom right.
@@ -38,9 +39,21 @@ class GutterSensor extends BodyComponent<FlipoffGame> with ContactCallbacks {
   void beginContact(Object other, Contact contact) {
     super.beginContact(other, contact);
     if (other is Ball) {
-      // Trigger a heavy rumble haptic on gutter drain
-      HapticFeedback.heavyImpact();
-      game.requestBallReset();
+      if (game.ballSaverTimeRemaining > 0.0) {
+        // Trigger a medium haptic bounce impact
+        HapticFeedback.mediumImpact();
+
+        // Bounce the ball upwards back into playfield
+        other.body.linearVelocity = Vector2(0.0, -12.0);
+
+        // Spawn a visual shield bounce text popup
+        final pos = other.body.position.clone();
+        game.world.add(ScorePopup(text: 'SHIELD BOUNCE', position: pos));
+      } else {
+        // Trigger a heavy rumble haptic on gutter drain
+        HapticFeedback.heavyImpact();
+        game.requestBallReset();
+      }
     }
   }
 }

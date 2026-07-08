@@ -43,12 +43,16 @@ class FlipoffGame extends Forge2DGame with TapCallbacks {
   /// Whether the game is currently in a game-over state.
   final ValueNotifier<bool> isGameOverNotifier = ValueNotifier<bool>(false);
 
+  /// Time remaining (in seconds) for the gutter shield / ball saver protection window.
+  double ballSaverTimeRemaining = 0.0;
+
   /// Resets the game to its initial state, clearing score, setting lives to 10,
   /// clearing the game over state, and reloading the first room.
   void resetGame() {
     scoreNotifier.value = 0;
     livesNotifier.value = 10;
     isGameOverNotifier.value = false;
+    ballSaverTimeRemaining = 5.0;
     overlays.remove('gameOver');
 
     // Reset ball position and reload Room 1
@@ -83,6 +87,7 @@ class FlipoffGame extends Forge2DGame with TapCallbacks {
     // Spawn the persistent ball
     ball = Ball(initialPosition: Vector2(4.5, 3.0));
     await world.add(ball);
+    ballSaverTimeRemaining = 5.0;
 
     // Initialize and add the RoomManager
     roomManager = RoomManager();
@@ -128,6 +133,11 @@ class FlipoffGame extends Forge2DGame with TapCallbacks {
     final currentPos = camera.viewfinder.position;
     camera.viewfinder.position = currentPos + (cameraTargetPosition - currentPos) * (5.0 * dt);
 
+    // Decrement ball saver timer
+    if (ballSaverTimeRemaining > 0.0) {
+      ballSaverTimeRemaining -= dt;
+    }
+
     if (_shouldResetBall) {
       _shouldResetBall = false;
 
@@ -157,6 +167,9 @@ class FlipoffGame extends Forge2DGame with TapCallbacks {
         ball.body.setTransform(Vector2(sx, sy + yOffset), 0.0);
         ball.body.linearVelocity = Vector2.zero();
         ball.body.angularVelocity = 0.0;
+
+        // Reset ball saver shield
+        ballSaverTimeRemaining = 5.0;
       }
     }
   }

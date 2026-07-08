@@ -4,6 +4,7 @@ import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flipoff/game/components/ball.dart';
 import 'package:flipoff/game/components/score_popup.dart';
 import 'package:flipoff/game/components/spark_particle.dart';
+import 'package:flipoff/game/components/bonus_life_effects.dart';
 import 'package:flipoff/game/flipoff_game.dart';
 
 /// A static crystal target component that the ball collides with.
@@ -85,9 +86,19 @@ class Target extends BodyComponent<FlipoffGame> with ContactCallbacks {
       game.scoreNotifier.value += 100;
 
       if (isBonusLife) {
+        final roomIndex = game.roomManager.currentRoomId == 'room_1' ? 0 : 1;
+        final yOffset = roomIndex * -16.0;
+
+        // Spawn "+EXTRA LIFE!" centered popup text
+        final centerPos = Vector2(4.5, 8.0 + yOffset);
+        game.world.add(ExtraLifeTextPopup(position: centerPos));
+
+        // Spawn flying green neon sphere towards HUD life bar
+        final hudPos = Vector2(8.5, 0.8 + yOffset);
+        game.world.add(BonusLifeFlyer(startPosition: pos, targetPosition: hudPos));
+
         if (game.livesNotifier.value < 15) {
           game.livesNotifier.value++;
-          game.world.add(ScorePopup(text: '+1 LIFE', position: pos));
         } else {
           // Max lives bonus points
           game.scoreNotifier.value += 500;
