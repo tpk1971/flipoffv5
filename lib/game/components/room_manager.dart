@@ -3,53 +3,55 @@ import 'package:flame/components.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flipoff/game/components/room_layout.dart';
 import 'package:flipoff/game/components/level_up_popup.dart';
+import 'package:flipoff/game/audio_controller.dart';
 import 'package:flipoff/game/flipoff_game.dart';
 
-/// A manager component that coordinates level configurations and room transitions.
-///
-/// Loads room layout specifications from JSON assets, manages objectives
-/// (remaining targets), and triggers camera/position updates on transitions.
+/// Manages level transitions, room lifecycle, and loading room JSON configs.
 class RoomManager extends Component with HasGameReference<FlipoffGame> {
-  /// Creates the room manager.
-  RoomManager();
-
-  /// The active room layout component currently added to the world.
+  /// The active room layout containing all room physical entities.
   RoomLayout? _activeLayout;
 
-  /// Gets the currently active room layout.
+  /// The active room layout containing all room physical entities.
   RoomLayout? get activeLayout => _activeLayout;
 
-  /// The current room identifier (e.g. 'room_1', 'room_2').
-  String _currentRoomId = 'room_1';
+  /// The unique room ID of the currently loaded chamber (e.g. 'room_1').
+  String _currentRoomId = '';
 
-  /// Gets the current room identifier.
+  /// The unique room ID of the currently loaded chamber (e.g. 'room_1').
   String get currentRoomId => _currentRoomId;
 
-  /// The count of targets remaining to be destroyed in the current room.
+  /// Remaining targets in the room before exit portal unlocks.
   int _remainingTargets = 0;
 
-  /// Gets the count of remaining targets.
+  /// The number of remaining targets to destroy in this room.
   int get remainingTargets => _remainingTargets;
 
-  /// Internal flag indicating if a room loading operation is pending.
+  /// Flags if a room transition is currently queued.
   bool _shouldLoadNextRoom = false;
 
-  /// Cached room ID to load during the next update cycle.
+  /// Cached next room ID to load.
   String? _nextRoomIdToLoad;
 
-  /// Cached configuration map to load during the next update cycle.
+  /// Cached next room JSON configuration.
   Map<String, dynamic>? _nextRoomConfig;
 
-  /// Delayed spawn timer for Level Up transition (in seconds).
-  double _levelUpTimeRemaining = 0.0;
+  // Cinematic level transition fields
+  bool _isTransitionPending = false;
+  double _transitionHoldTimer = 0.0;
+  String _pendingRoomId = '';
 
-  /// Deferred ball spawn X coordinate.
+  bool _isCameraPanning = false;
+
+  /// Exposes if the camera is currently in panning transition state.
+  bool get isCameraPanning => _isCameraPanning;
+
+  double _cameraPanProgress = 0.0;
+  late Vector2 _panStartPos;
+  late Vector2 _panTargetPos;
+
+  // Deferred spawn cache
   double _deferredSpawnX = 4.5;
-
-  /// Deferred ball spawn Y coordinate.
   double _deferredSpawnY = 3.0;
-
-  /// Deferred ball spawn room index.
   int _deferredRoomIndex = 0;
 
   @override
@@ -74,7 +76,20 @@ class RoomManager extends Component with HasGameReference<FlipoffGame> {
     final nextRoomId = _activeLayout?.config['portal']['nextRoomIdId'] ??
         _activeLayout?.config['portal']['nextRoomId'] ??
         'room_1';
-    requestRoomTransition(nextRoomId);
+
+    // Initiate Phase 1: 1.0 second hold on current room before panning
+    _pendingRoomId = nextRoomId;
+    _isTransitionPending = true;
+    _transitionHoldTimer = 1.0;
+
+    // Freeze ball in portal to avoid falling/rolling
+    game.ball.body.linearVelocity = Vector2.zero();
+    game.ball.body.angularVelocity = 0.0;
+
+    // Spawn "LEVEL UP!" on the current room viewport
+    final currentRoomIndex = _currentRoomId == 'room_1' ? 0 : 1;
+    final centerPos = Vector2(4.5, 8.0 + currentRoomIndex * -16.0);
+    game.world.add(LevelUpPopup(position: centerPos));
   }
 
   /// Queues a transition to load the specified [nextRoomId] on the next frame.
@@ -111,6 +126,7 @@ class RoomManager extends Component with HasGameReference<FlipoffGame> {
 
     // Position the camera Y target center
     game.cameraTargetPosition = Vector2(4.5, 8.0 + roomIndex * -16.0);
+    game.camera.viewfinder.position = game.cameraTargetPosition;
 
     // Reposition the ball to the room's spawn coordinate
     final spawnPos = config['spawnPosition'] as List<dynamic>;
@@ -123,6 +139,9 @@ class RoomManager extends Component with HasGameReference<FlipoffGame> {
       game.ball.body.linearVelocity = Vector2.zero();
       game.ball.body.angularVelocity = 0.0;
     }
+
+    // Auto-rotate and play music loop for the starting level
+    GameAudioController.instance.playMusicForRoom(roomIndex);
   }
 
   /// Helper method to execute structural updates and room loading asynchronously.
@@ -143,45 +162,66 @@ class RoomManager extends Component with HasGameReference<FlipoffGame> {
       newLayout.portal.unlock();
     }
 
-    // Position camera Y coordinate
-    game.cameraTargetPosition = Vector2(4.5, 8.0 + roomIndex * -16.0);
+    // Initiate Phase 2: Start 1.0s Camera Easing Pan to new target viewport
+    _panStartPos = game.camera.viewfinder.position.clone();
+    _panTargetPos = Vector2(4.5, 8.0 + roomIndex * -16.0);
+    _isCameraPanning = true;
+    _cameraPanProgress = 0.0;
+    game.cameraTargetPosition = _panTargetPos;
 
-    // Parse spawn position and cache it to defer ball spawning
+    // Parse spawn position and cache it to defer ball spawning until pan completes
     final spawnPos = config['spawnPosition'] as List<dynamic>;
     _deferredSpawnX = (spawnPos[0] as num).toDouble();
     _deferredSpawnY = (spawnPos[1] as num).toDouble();
     _deferredRoomIndex = roomIndex;
-    _levelUpTimeRemaining = 2.0;
 
     // Hide/park the ball off-screen with no speed to prevent early collision
     game.ball.body.setTransform(Vector2(-100.0, -100.0), 0.0);
     game.ball.body.linearVelocity = Vector2.zero();
     game.ball.body.angularVelocity = 0.0;
 
-    // Spawn congratulations "LEVEL UP!" popup text in center of viewport
-    final centerPos = Vector2(4.5, 8.0 + roomIndex * -16.0);
-    game.world.add(LevelUpPopup(position: centerPos));
-
     // Remove old layout
     if (oldLayout != null) {
       oldLayout.removeFromParent();
     }
+
+    // Play loop rotation for the new room
+    GameAudioController.instance.playMusicForRoom(roomIndex);
   }
 
   @override
   void update(double dt) {
     super.update(dt);
 
-    // Handle delayed Level Up transition timer
-    if (_levelUpTimeRemaining > 0.0) {
-      _levelUpTimeRemaining -= dt;
-      if (_levelUpTimeRemaining <= 0.0) {
-        // Deployed text has disappeared, restore and launch the ball!
+    // Handle initial hold timer (Phase 1)
+    if (_isTransitionPending) {
+      // Pin ball in place during current level popup display
+      game.ball.body.linearVelocity = Vector2.zero();
+      game.ball.body.angularVelocity = 0.0;
+
+      _transitionHoldTimer -= dt;
+      if (_transitionHoldTimer <= 0.0) {
+        _isTransitionPending = false;
+        requestRoomTransition(_pendingRoomId);
+      }
+    }
+
+    // Handle easing camera pan (Phase 2)
+    if (_isCameraPanning) {
+      _cameraPanProgress += dt; // 1.0 second duration pan
+      final double t = _cameraPanProgress.clamp(0.0, 1.0);
+
+      // Cubic Hermite Ease-In-Ease-Out: 3t^2 - 2t^3
+      final double eased = t * t * (3.0 - 2.0 * t);
+      game.camera.viewfinder.position = _panStartPos + (_panTargetPos - _panStartPos) * eased;
+
+      if (_cameraPanProgress >= 1.0) {
+        _isCameraPanning = false;
+
+        // Pan complete, launch the ball and trigger 5s gutter shield protection
         game.ball.body.setTransform(Vector2(_deferredSpawnX, _deferredSpawnY + _deferredRoomIndex * -16.0), 0.0);
         game.ball.body.linearVelocity = Vector2.zero();
         game.ball.body.angularVelocity = 0.0;
-        
-        // Reset and activate the 5-second gutter protection shield
         game.ballSaverTimeRemaining = 5.0;
       }
     }

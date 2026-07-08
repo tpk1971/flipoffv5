@@ -7,6 +7,7 @@ import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:flipoff/game/flipoff_game.dart';
 import 'package:flipoff/game/splash_page.dart';
+import 'package:flipoff/game/audio_controller.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -96,6 +97,7 @@ class _PlayfieldPageState extends State<PlayfieldPage> {
                 overlayBuilderMap: {
                   'hud': (context, game) => GameHud(game: game as FlipoffGame),
                   'gameOver': (context, game) => GameOverOverlay(game: game as FlipoffGame),
+                  'pause': (context, game) => PauseOverlay(game: game as FlipoffGame),
                 },
                 initialActiveOverlays: const ['hud'],
               ),
@@ -135,6 +137,20 @@ class GameHud extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                // Pause button
+                Material(
+                  color: Colors.transparent,
+                  child: IconButton(
+                    icon: const Icon(Icons.pause, color: Color(0xFFFF007F), size: 18),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    onPressed: () {
+                      game.paused = true;
+                      game.overlays.add('pause');
+                    },
+                  ),
+                ),
+
                 // Score readout
                 ValueListenableBuilder<int>(
                   valueListenable: game.scoreNotifier,
@@ -325,6 +341,164 @@ class GameOverOverlay extends StatelessWidget {
                 ],
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// An overlay displayed when the player pauses the game, offering mute/unmute and exit buttons.
+class PauseOverlay extends StatefulWidget {
+  /// The reference to the active game.
+  final FlipoffGame game;
+
+  /// Creates a PauseOverlay.
+  const PauseOverlay({super.key, required this.game});
+
+  @override
+  State<PauseOverlay> createState() => _PauseOverlayState();
+}
+
+class _PauseOverlayState extends State<PauseOverlay> {
+  @override
+  Widget build(BuildContext context) {
+    final audio = GameAudioController.instance;
+
+    return Material(
+      color: Colors.transparent,
+      child: Center(
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+            child: Container(
+              width: 300,
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.8),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: const Color(0xFFFF007F).withValues(alpha: 0.3),
+                  width: 2.0,
+                ),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x33FF007F),
+                    blurRadius: 15.0,
+                    spreadRadius: 2.0,
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'GAME PAUSED',
+                    style: TextStyle(
+                      color: Color(0xFFFF007F),
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2.0,
+                      shadows: [
+                        Shadow(
+                          color: Color(0xAAFF007F),
+                          blurRadius: 10.0,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Music Mute/Unmute
+                  _buildMenuButton(
+                    text: audio.isMusicMuted ? 'UNMUTE MUSIC' : 'MUTE MUSIC',
+                    color: const Color(0xFF00F5D4),
+                    onPressed: () async {
+                      await audio.toggleMusic();
+                      setState(() {});
+                    },
+                  ),
+                  const SizedBox(height: 12),
+
+                  // SFX Mute/Unmute
+                  _buildMenuButton(
+                    text: audio.isSfxMuted ? 'UNMUTE SFX' : 'MUTE SFX',
+                    color: const Color(0xFF00F5D4),
+                    onPressed: () async {
+                      await audio.toggleSfx();
+                      setState(() {});
+                    },
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Resume Game
+                  _buildMenuButton(
+                    text: 'RESUME GAME',
+                    color: const Color(0xFFFF9F1C),
+                    onPressed: () {
+                      widget.game.paused = false;
+                      widget.game.overlays.remove('pause');
+                    },
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Quit Game
+                  _buildMenuButton(
+                    text: 'QUIT GAME',
+                    color: const Color(0xFFF25C54),
+                    onPressed: () async {
+                      widget.game.resetGame();
+                      widget.game.paused = false;
+                      widget.game.overlays.remove('pause');
+                      await audio.stopAll();
+                      if (context.mounted) {
+                        Navigator.of(context).pop();
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMenuButton({
+    required String text,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.15),
+            blurRadius: 8.0,
+          ),
+        ],
+      ),
+      child: TextButton(
+        style: TextButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          backgroundColor: Colors.white.withValues(alpha: 0.05),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+            side: BorderSide(color: color.withValues(alpha: 0.4), width: 1.5),
+          ),
+        ),
+        onPressed: onPressed,
+        child: Text(
+          text,
+          style: TextStyle(
+            color: color,
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.5,
           ),
         ),
       ),

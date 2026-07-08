@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flipoff/game/components/ball.dart';
+import 'package:flipoff/game/audio_controller.dart';
 import 'package:flipoff/game/flipoff_game.dart';
 
 /// A static glassmorphic circular bumper component.
@@ -12,40 +13,39 @@ class Bumper extends BodyComponent<FlipoffGame> with ContactCallbacks {
   /// The local position of this bumper in the room's coordinate system.
   final Vector2 initialPosition;
 
-  /// The radius of the bumper.
+  /// The physical radius of this circular bumper.
   final double radius;
 
-  /// Creates a bumper component at [initialPosition] with [radius].
+  /// Creates a Bumper at the specified [initialPosition] and [radius].
   Bumper({
     required this.initialPosition,
-    required this.radius,
+    this.radius = 0.5,
   });
 
-  /// The glassmorphic fill paint for the bumper (Teal Base).
-  late final Paint _paint;
-
-  /// The glowing neon border paint.
-  late final Paint _borderPaint;
-
-  /// Current visual scale of the bumper for pulsing effect.
+  /// The active scaling factor for the hit-response pulse animation.
   double _pulseScale = 1.0;
 
-  /// Current glow intensity decay factor.
+  /// The active glow highlight intensity for the hit-response pulse animation.
   double _pulseGlow = 0.0;
+
+  /// Glassmorphic center fill paint.
+  late final Paint _paint;
+
+  /// Outer neon border paint.
+  late final Paint _borderPaint;
 
   @override
   Future<void> onLoad() async {
     await super.onLoad();
 
-    // Active Neon Teal base color palette: #240046 (deep purple) / #00F5D4 (glowing teal)
     _paint = Paint()
-      ..color = const Color(0xCC240046) // Semi-transparent deep violet-purple base
+      ..color = const Color(0x99FF007F) // Glassmorphic Pink fill
       ..style = PaintingStyle.fill;
 
     _borderPaint = Paint()
-      ..color = const Color(0xFF00F5D4) // Neon Teal border
+      ..color = const Color(0xFFFF007F) // Vibrant Neon Pink border outline
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.06;
+      ..strokeWidth = 0.05;
   }
 
   @override
@@ -91,6 +91,7 @@ class Bumper extends BodyComponent<FlipoffGame> with ContactCallbacks {
 
       // Haptic bump collision feedback
       HapticFeedback.lightImpact();
+      GameAudioController.instance.playSfx('sfx_bumper.wav');
 
       final bumperPos = body.position;
       final ballPos = other.body.position;

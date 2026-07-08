@@ -129,9 +129,11 @@ class FlipoffGame extends Forge2DGame with TapCallbacks {
   void update(double dt) {
     super.update(dt);
 
-    // Smoothly pan camera viewfinder toward target position using the explicit setter
-    final currentPos = camera.viewfinder.position;
-    camera.viewfinder.position = currentPos + (cameraTargetPosition - currentPos) * (5.0 * dt);
+    // Smoothly pan camera viewfinder toward target position using the explicit setter (skip if roomManager is easing)
+    if (!roomManager.isCameraPanning) {
+      final currentPos = camera.viewfinder.position;
+      camera.viewfinder.position = currentPos + (cameraTargetPosition - currentPos) * (5.0 * dt);
+    }
 
     // Decrement ball saver timer
     if (ballSaverTimeRemaining > 0.0) {
