@@ -34,20 +34,6 @@ class GameAudioController {
     isMusicMuted = _prefs.getBool(_musicMuteKey) ?? false;
     isSfxMuted = _prefs.getBool(_sfxMuteKey) ?? false;
     _initialized = true;
-
-    // Pre-cache FlameAudio loop files to minimize load latency during play
-    await FlameAudio.audioCache.loadAll([
-      'loop_1.wav',
-      'loop_2.wav',
-      'loop_3.wav',
-      'loop_4.wav',
-      'loop_5.wav',
-      'loop_6.wav',
-      'sfx_flipper.wav',
-      'sfx_bumper.wav',
-      'sfx_target.wav',
-      'sfx_gutter.wav',
-    ]);
   }
 
   /// Toggles the background music mute state and saves to cache.
