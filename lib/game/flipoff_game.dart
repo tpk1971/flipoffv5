@@ -8,6 +8,7 @@ import 'package:flipoff/game/components/background_grid.dart';
 import 'package:flipoff/game/components/ball.dart';
 import 'package:flipoff/game/components/room_manager.dart';
 import 'package:flipoff/game/components/starfield.dart';
+import 'package:flipoff/game/audio_controller.dart';
 
 /// The core Flame Forge2D game class for Flipoff: Snap.
 ///
@@ -45,6 +46,14 @@ class FlipoffGame extends Forge2DGame with TapCallbacks {
 
   /// Time remaining (in seconds) for the gutter shield / ball saver protection window.
   double ballSaverTimeRemaining = 0.0;
+
+  /// Queue of SFX asset names to be played outside the Box2D solver phase.
+  final List<String> _sfxQueue = [];
+
+  /// Enqueues an SFX to be played safely on the next main loop frame update tick.
+  void queueSfx(String name) {
+    _sfxQueue.add(name);
+  }
 
   /// Resets the game to its initial state, clearing score, setting lives to 10,
   /// clearing the game over state, and reloading the first room.
@@ -138,6 +147,14 @@ class FlipoffGame extends Forge2DGame with TapCallbacks {
     // Decrement ball saver timer
     if (ballSaverTimeRemaining > 0.0) {
       ballSaverTimeRemaining -= dt;
+    }
+
+    // Process enqueued SFX triggers outside Box2D solver phase
+    if (_sfxQueue.isNotEmpty) {
+      for (final sfx in _sfxQueue) {
+        GameAudioController.instance.playSfx(sfx);
+      }
+      _sfxQueue.clear();
     }
 
     if (_shouldResetBall) {

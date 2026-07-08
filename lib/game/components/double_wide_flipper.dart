@@ -2,7 +2,6 @@ import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
-import 'package:flipoff/game/audio_controller.dart';
 import 'package:flipoff/game/flipoff_game.dart';
 
 /// An asymmetrical single flipper pivoted on the left.
@@ -124,7 +123,7 @@ class DoubleWideFlipper extends BodyComponent<FlipoffGame> {
   void activate() {
     _joint?.motorSpeed = -45.0; // Fast upward sweep to lower limit (-25 deg)
     HapticFeedback.selectionClick();
-    GameAudioController.instance.playSfx('sfx_flipper.wav');
+    game.queueSfx('sfx_flipper.wav');
   }
 
   /// Sets the motor speed to return the flipper to its resting position.

@@ -2,7 +2,6 @@ import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flipoff/game/components/ball.dart';
 import 'package:flipoff/game/components/score_popup.dart';
-import 'package:flipoff/game/audio_controller.dart';
 import 'package:flipoff/game/flipoff_game.dart';
 
 /// A sensor component positioned in the gutter drain opening at the bottom right.
@@ -53,7 +52,7 @@ class GutterSensor extends BodyComponent<FlipoffGame> with ContactCallbacks {
       } else {
         // Trigger a heavy rumble haptic on gutter drain
         HapticFeedback.heavyImpact();
-        GameAudioController.instance.playSfx('sfx_gutter.wav');
+        game.queueSfx('sfx_gutter.wav');
         game.requestBallReset();
       }
     }

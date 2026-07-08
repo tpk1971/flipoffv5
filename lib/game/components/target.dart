@@ -5,7 +5,6 @@ import 'package:flipoff/game/components/ball.dart';
 import 'package:flipoff/game/components/score_popup.dart';
 import 'package:flipoff/game/components/spark_particle.dart';
 import 'package:flipoff/game/components/bonus_life_effects.dart';
-import 'package:flipoff/game/audio_controller.dart';
 import 'package:flipoff/game/flipoff_game.dart';
 
 /// A static crystal target component that the ball collides with.
@@ -114,7 +113,7 @@ class Target extends BodyComponent<FlipoffGame> with ContactCallbacks {
 
       // Trigger light haptic impact feedback
       HapticFeedback.lightImpact();
-      GameAudioController.instance.playSfx('sfx_target.wav');
+      game.queueSfx('sfx_target.wav');
 
       // Safe deferred removal from the Flame component tree
       removeFromParent();

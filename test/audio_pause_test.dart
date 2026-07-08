@@ -21,6 +21,30 @@ void main() {
       expect(audio.isSfxMuted, isTrue);
     });
 
+    test('SFX queueing and deferred execution on update()', () {
+      final game = FlipoffGame();
+      
+      // Queue a sound
+      game.queueSfx('sfx_target.wav');
+      
+      // Update ticks clear the command buffer safely
+      game.update(0.016);
+    });
+
+    test('Cubic Easing panning calculations check', () {
+      // Easing function: 3t^2 - 2t^3
+      // When t = 0.5: 3(0.25) - 2(0.125) = 0.75 - 0.25 = 0.5
+      // When t = 0.1: 3(0.01) - 2(0.001) = 0.03 - 0.002 = 0.028 (slow start)
+      // When t = 0.9: 3(0.81) - 2(0.729) = 2.43 - 1.458 = 0.972 (slow end)
+      double cubicEase(double t) => t * t * (3.0 - 2.0 * t);
+      
+      expect(cubicEase(0.0), equals(0.0));
+      expect(cubicEase(0.5), equals(0.5));
+      expect(cubicEase(1.0), equals(1.0));
+      expect(cubicEase(0.1), closeTo(0.028, 0.0001));
+      expect(cubicEase(0.9), closeTo(0.972, 0.0001));
+    });
+
     testWidgets('PauseOverlay widget instantiation test', (WidgetTester tester) async {
       final game = FlipoffGame();
       

@@ -33,6 +33,9 @@ class GameAudioController {
     _prefs = await SharedPreferences.getInstance();
     isMusicMuted = _prefs.getBool(_musicMuteKey) ?? false;
     isSfxMuted = _prefs.getBool(_sfxMuteKey) ?? false;
+    
+    // Initialize the Flame BGM audio player
+    FlameAudio.bgm.initialize();
     _initialized = true;
   }
 

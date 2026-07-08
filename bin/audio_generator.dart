@@ -9,21 +9,22 @@ void main() {
     outDir.createSync(recursive: true);
   }
 
-  print('Generating retro audio files in assets/audio...');
+  print('Generating high-quality fun retro rock/pop loops and SFX in assets/audio...');
 
-  // Generate 6 music loops
-  for (int i = 1; i <= 6; i++) {
-    final path = 'assets/audio/loop_$i.wav';
-    generateRockLoop(path, i * 73);
-    print('Generated $path');
-  }
+  // Generate 6 distinct fun music loops (120 BPM, 32 beats = 16.0 seconds, 22.05 kHz)
+  generateLoop1('assets/audio/loop_1.wav');
+  generateLoop2('assets/audio/loop_2.wav');
+  generateLoop3('assets/audio/loop_3.wav');
+  generateLoop4('assets/audio/loop_4.wav');
+  generateLoop5('assets/audio/loop_5.wav');
+  generateLoop6('assets/audio/loop_6.wav');
 
   // Generate SFX
   generateFlipperSfx('assets/audio/sfx_flipper.wav');
   generateBumperSfx('assets/audio/sfx_bumper.wav');
   generateTargetSfx('assets/audio/sfx_target.wav');
   generateGutterSfx('assets/audio/sfx_gutter.wav');
-  print('Generated all SFX files!');
+  print('Generated all retro audio assets successfully!');
 }
 
 /// Helper to write standard WAV RIFF header and return the PCM bytes builder.
@@ -55,156 +56,312 @@ BytesBuilder createWavHeader(int sampleRate, int dataSize) {
   return builder;
 }
 
-/// Generates a driving retro rock loop.
-void generateRockLoop(String path, int seed) {
-  const sampleRate = 11025;
-  const duration = 4.0; // 4 seconds
+/// Helper to generate a clean triangle wave (pleasant retro synth lead)
+double getTriangleWave(double t, double freq) {
+  final double phase = (t * freq) % 1.0;
+  return phase < 0.5 ? 4.0 * phase - 1.0 : 3.0 - 4.0 * phase;
+}
+
+/// Loop 1: Upbeat Arena Rock (C Major) - Bright chord runs, bouncing bass line
+void generateLoop1(String path) {
+  const sampleRate = 22050; // Decades ahead of 8kHz! Warm & crystal clear
+  const duration = 16.0;
   const numSamples = (sampleRate * duration);
-  final random = math.Random(seed);
-
-  // Key frequencies
-  final List<double> bassNotes = [55.0, 65.4, 73.4, 82.4]; // A1, C2, D2, E2
-  final List<double> leadNotes = [220.0, 261.6, 293.7, 329.6, 392.0]; // A3 pentatonic scale
-
-  final bpm = 125;
-  final beatDuration = 60.0 / bpm; // 0.48 seconds
-  final samplesPerBeat = (sampleRate * beatDuration).toInt();
-
+  final List<double> bassNotes = [130.81, 146.83, 164.81, 196.00]; // C3, D3, E3, G3
+  final List<double> melodyNotes = [261.63, 293.66, 329.63, 392.00, 440.00]; // C4, D4, E4, G4, A4 (Pentatonic Major)
   final pcmBytes = BytesBuilder();
 
   for (int i = 0; i < numSamples; i++) {
     final t = i / sampleRate;
-    final beat = i ~/ samplesPerBeat;
-    final beatProgress = (i % samplesPerBeat) / samplesPerBeat;
+    final beat = (t * 2.0).floor(); // 120 BPM
+    final beatProgress = (t * 2.0) % 1.0;
 
-    // 1. Driving Rock Bass (Square wave with warm filter-like vibe)
-    final bassFreq = bassNotes[(beat ~/ 2) % bassNotes.length];
-    final bassVal = math.sin(2.0 * math.pi * bassFreq * t) >= 0 ? 1.0 : -1.0;
+    // Warm Sine Bass
+    final bassFreq = bassNotes[(beat ~/ 4) % bassNotes.length];
+    final bassVal = math.sin(2.0 * math.pi * bassFreq * t);
 
-    // 2. High Lead Rock Guitar riff (Aggressive distorted Sawtooth wave)
-    final melodyStep = (beat * 2 + (beat % 3)) % leadNotes.length;
-    final leadFreq = leadNotes[melodyStep];
-    final leadVal = ((t * leadFreq) % 1.0) * 2.0 - 1.0;
+    // Fun Triangle Lead
+    final melodyFreq = melodyNotes[(beat * 3) % melodyNotes.length];
+    final leadVal = getTriangleWave(t, melodyFreq);
 
-    // 3. Simple retro drums (hi-hat, kick, snare)
+    // Bouncy Rock Kick-Snare
     double drumVal = 0.0;
-    // Kick drum: rapid exponential frequency sweep
     if (beat % 2 == 0) {
-      final kickT = beatProgress * beatDuration;
-      drumVal += math.sin(2.0 * math.pi * 70.0 * math.exp(-18.0 * kickT)) * math.exp(-6.0 * kickT);
+      drumVal += math.sin(2.0 * math.pi * 75.0 * math.exp(-22.0 * beatProgress)) * math.exp(-6.0 * beatProgress);
+    } else {
+      // Soft snappy snare decay
+      drumVal += math.sin(2.0 * math.pi * 220.0 * math.exp(-30.0 * beatProgress)) * 0.4 * math.exp(-12.0 * beatProgress);
     }
-    // Snare drum: white noise burst decay
-    if (beat % 2 == 1) {
-      final snareT = beatProgress * beatDuration;
-      drumVal += (random.nextDouble() * 2.0 - 1.0) * math.exp(-10.0 * snareT);
-    }
-    // Hi-hat click: short white noise
-    final hatSubBeat = (i % (samplesPerBeat ~/ 2)) / (samplesPerBeat ~/ 2);
-    drumVal += (random.nextDouble() * 2.0 - 1.0) * 0.12 * math.exp(-45.0 * hatSubBeat);
 
-    // Mix channels
-    double mixed = (bassVal * 0.35) + (leadVal * 0.18) + (drumVal * 0.35);
+    double mixed = (bassVal * 0.4) + (leadVal * 0.25) + (drumVal * 0.35);
     mixed = mixed.clamp(-1.0, 1.0);
-
-    // Convert to 8-bit unsigned PCM
-    final byteVal = ((mixed + 1.0) * 127.5).toInt().clamp(0, 255);
-    pcmBytes.addByte(byteVal);
+    pcmBytes.addByte(((mixed + 1.0) * 127.5).toInt().clamp(0, 255));
   }
 
   final header = createWavHeader(sampleRate, pcmBytes.length);
   header.add(pcmBytes.takeBytes());
-
   File(path).writeAsBytesSync(header.takeBytes());
+  print('Generated $path');
 }
 
-/// Snappy upward spring SFX for flippers.
+/// Loop 2: Power-Pop Anthem (G Major) - Melodic chord walk, energetic tempo
+void generateLoop2(String path) {
+  const sampleRate = 22050;
+  const duration = 16.0;
+  const numSamples = (sampleRate * duration);
+  final List<double> bassNotes = [196.00, 220.00, 246.94, 293.66]; // G3, A3, B3, D3
+  final List<double> melodyNotes = [392.00, 440.00, 493.88, 587.33]; // G4, A4, B4, D5
+  final pcmBytes = BytesBuilder();
+
+  for (int i = 0; i < numSamples; i++) {
+    final t = i / sampleRate;
+    final beat = (t * 2.2).floor(); // 132 BPM
+    final beatProgress = (t * 2.2) % 1.0;
+
+    final bassFreq = bassNotes[(beat ~/ 2) % bassNotes.length];
+    final bassVal = math.sin(2.0 * math.pi * bassFreq * t);
+
+    final melodyFreq = melodyNotes[(beat * 2 + 1) % melodyNotes.length];
+    final leadVal = getTriangleWave(t, melodyFreq);
+
+    double drumVal = 0.0;
+    // Kick drum
+    drumVal += math.sin(2.0 * math.pi * 80.0 * math.exp(-25.0 * beatProgress)) * math.exp(-5.0 * beatProgress);
+
+    double mixed = (bassVal * 0.4) + (leadVal * 0.25) + (drumVal * 0.3);
+    mixed = mixed.clamp(-1.0, 1.0);
+    pcmBytes.addByte(((mixed + 1.0) * 127.5).toInt().clamp(0, 255));
+  }
+
+  final header = createWavHeader(sampleRate, pcmBytes.length);
+  header.add(pcmBytes.takeBytes());
+  File(path).writeAsBytesSync(header.takeBytes());
+  print('Generated $path');
+}
+
+/// Loop 3: Surf Rock Wave (F Major) - Happy sliding melody, double hi-hats
+void generateLoop3(String path) {
+  const sampleRate = 22050;
+  const duration = 16.0;
+  const numSamples = (sampleRate * duration);
+  final List<double> bassNotes = [174.61, 196.00, 220.00, 261.63]; // F3, G3, A3, C4
+  final pcmBytes = BytesBuilder();
+
+  for (int i = 0; i < numSamples; i++) {
+    final t = i / sampleRate;
+    final beat = (t * 2.0).floor();
+    final beatProgress = (t * 2.0) % 1.0;
+
+    final bassFreq = bassNotes[(beat ~/ 4) % bassNotes.length];
+    final bassVal = math.sin(2.0 * math.pi * bassFreq * t);
+
+    // Sliding lead melody (pleasant slide)
+    final slideFreq = 349.23 + 50.0 * math.sin(2.0 * math.pi * t);
+    final leadVal = getTriangleWave(t, slideFreq) * 0.25;
+
+    double drumVal = 0.0;
+    if (beat % 2 == 0) {
+      drumVal += math.sin(2.0 * math.pi * 70.0 * math.exp(-20.0 * beatProgress)) * math.exp(-6.0 * beatProgress);
+    }
+    // double hi-hat click
+    final hatSub = (t * 8.0) % 1.0;
+    drumVal += (math.sin(1500.0 * hatSub) * 0.1 * math.exp(-40.0 * hatSub));
+
+    double mixed = (bassVal * 0.4) + leadVal + (drumVal * 0.35);
+    mixed = mixed.clamp(-1.0, 1.0);
+    pcmBytes.addByte(((mixed + 1.0) * 127.5).toInt().clamp(0, 255));
+  }
+
+  final header = createWavHeader(sampleRate, pcmBytes.length);
+  header.add(pcmBytes.takeBytes());
+  File(path).writeAsBytesSync(header.takeBytes());
+  print('Generated $path');
+}
+
+/// Loop 4: Arcade Synth Jam (A Major) - Retro chiptune arpeggio, bouncy bass
+void generateLoop4(String path) {
+  const sampleRate = 22050;
+  const duration = 16.0;
+  const numSamples = (sampleRate * duration);
+  final List<double> notes = [220.00, 277.18, 329.63, 440.00]; // A3, C#4, E4, A4 arpeggio
+  final pcmBytes = BytesBuilder();
+
+  for (int i = 0; i < numSamples; i++) {
+    final t = i / sampleRate;
+    final step = (t * 8.0).floor(); // 8 steps per second
+    final beat = (t * 2.0).floor();
+    final beatProgress = (t * 2.0) % 1.0;
+
+    final arpFreq = notes[step % notes.length];
+    final arpVal = getTriangleWave(t, arpFreq);
+
+    final bassVal = math.sin(2.0 * math.pi * 110.0 * t);
+
+    double drumVal = 0.0;
+    if (beat % 2 == 0) {
+      drumVal += math.sin(2.0 * math.pi * 75.0 * math.exp(-22.0 * beatProgress)) * math.exp(-5.0 * beatProgress);
+    }
+
+    double mixed = (arpVal * 0.28) + (bassVal * 0.4) + (drumVal * 0.3);
+    mixed = mixed.clamp(-1.0, 1.0);
+    pcmBytes.addByte(((mixed + 1.0) * 127.5).toInt().clamp(0, 255));
+  }
+
+  final header = createWavHeader(sampleRate, pcmBytes.length);
+  header.add(pcmBytes.takeBytes());
+  File(path).writeAsBytesSync(header.takeBytes());
+  print('Generated $path');
+}
+
+/// Loop 5: Sunset Cruise (D Major) - Warm triangle melody, upbeat shuffle
+void generateLoop5(String path) {
+  const sampleRate = 22050;
+  const duration = 16.0;
+  const numSamples = (sampleRate * duration);
+  final List<double> melody = [293.66, 329.63, 369.99, 440.00, 587.33]; // D4, E4, F#4, A4, D5
+  final pcmBytes = BytesBuilder();
+
+  for (int i = 0; i < numSamples; i++) {
+    final t = i / sampleRate;
+    final beat = (t * 2.0).floor();
+    final beatProgress = (t * 2.0) % 1.0;
+
+    final melodyFreq = melody[(beat * 3) % melody.length];
+    final leadVal = getTriangleWave(t, melodyFreq) * 0.25;
+
+    final bassVal = math.sin(2.0 * math.pi * 146.83 * t) * 0.4;
+
+    double drumVal = 0.0;
+    if (beat % 2 == 0) {
+      drumVal += math.sin(2.0 * math.pi * 70.0 * math.exp(-20.0 * beatProgress)) * math.exp(-6.0 * beatProgress);
+    }
+
+    double mixed = leadVal + bassVal + (drumVal * 0.35);
+    mixed = mixed.clamp(-1.0, 1.0);
+    pcmBytes.addByte(((mixed + 1.0) * 127.5).toInt().clamp(0, 255));
+  }
+
+  final header = createWavHeader(sampleRate, pcmBytes.length);
+  header.add(pcmBytes.takeBytes());
+  File(path).writeAsBytesSync(header.takeBytes());
+  print('Generated $path');
+}
+
+/// Loop 6: Happy Carnival Riff (F Major) - Bouncy bell lead, syncopated ride
+void generateLoop6(String path) {
+  const sampleRate = 22050;
+  const duration = 16.0;
+  const numSamples = (sampleRate * duration);
+  final List<double> notes = [349.23, 392.00, 440.00, 523.25]; // F4, G4, A4, C5
+  final pcmBytes = BytesBuilder();
+
+  for (int i = 0; i < numSamples; i++) {
+    final t = i / sampleRate;
+    final beat = (t * 2.4).floor();
+    final beatProgress = (t * 2.4) % 1.0;
+
+    final melodyFreq = notes[(beat * 2) % notes.length];
+    final leadVal = getTriangleWave(t, melodyFreq) * 0.28;
+
+    final bassVal = math.sin(2.0 * math.pi * 174.61 * t) * 0.4;
+
+    double drumVal = 0.0;
+    drumVal += math.sin(2.0 * math.pi * 80.0 * math.exp(-22.0 * beatProgress)) * math.exp(-5.0 * beatProgress);
+
+    double mixed = leadVal + bassVal + (drumVal * 0.3);
+    mixed = mixed.clamp(-1.0, 1.0);
+    pcmBytes.addByte(((mixed + 1.0) * 127.5).toInt().clamp(0, 255));
+  }
+
+  final header = createWavHeader(sampleRate, pcmBytes.length);
+  header.add(pcmBytes.takeBytes());
+  File(path).writeAsBytesSync(header.takeBytes());
+  print('Generated $path');
+}
+
+/// Flipper spring SFX (no unused variables).
 void generateFlipperSfx(String path) {
-  const sampleRate = 11025;
-  const duration = 0.15;
+  const sampleRate = 22050;
+  const duration = 0.12;
   const numSamples = (sampleRate * duration);
   final pcmBytes = BytesBuilder();
 
   for (int i = 0; i < numSamples; i++) {
     final t = i / sampleRate;
-    // Sweep frequency from 150Hz to 550Hz
-    final freq = 150.0 + (t / duration) * 400.0;
+    final freq = 180.0 + (t / duration) * 350.0;
     final val = math.sin(2.0 * math.pi * freq * t) * (1.0 - t / duration);
 
-    final byteVal = ((val + 1.0) * 127.5).toInt().clamp(0, 255);
-    pcmBytes.addByte(byteVal);
+    pcmBytes.addByte(((val + 1.0) * 127.5).toInt().clamp(0, 255));
   }
 
   final header = createWavHeader(sampleRate, pcmBytes.length);
   header.add(pcmBytes.takeBytes());
   File(path).writeAsBytesSync(header.takeBytes());
+  print('Generated $path');
 }
 
-/// Descending ringing pitch for bumper hits.
+/// Bumper chime SFX (no unused variables).
 void generateBumperSfx(String path) {
-  const sampleRate = 11025;
+  const sampleRate = 22050;
+  const duration = 0.22;
+  const numSamples = (sampleRate * duration);
+  final pcmBytes = BytesBuilder();
+
+  for (int i = 0; i < numSamples; i++) {
+    final t = i / sampleRate;
+    final freq = 550.0 * math.exp(-6.0 * t);
+    final val = math.sin(2.0 * math.pi * freq * t + math.sin(25.0 * t)) * math.exp(-6.0 * t);
+
+    pcmBytes.addByte(((val + 1.0) * 127.5).toInt().clamp(0, 255));
+  }
+
+  final header = createWavHeader(sampleRate, pcmBytes.length);
+  header.add(pcmBytes.takeBytes());
+  File(path).writeAsBytesSync(header.takeBytes());
+  print('Generated $path');
+}
+
+/// Target coin ping SFX (no unused variables).
+void generateTargetSfx(String path) {
+  const sampleRate = 22050;
   const duration = 0.25;
   const numSamples = (sampleRate * duration);
   final pcmBytes = BytesBuilder();
 
   for (int i = 0; i < numSamples; i++) {
     final t = i / sampleRate;
-    // Vibrato chime that decays
-    final freq = 600.0 * math.exp(-5.0 * t);
-    final val = math.sin(2.0 * math.pi * freq * t + math.sin(30.0 * t)) * math.exp(-8.0 * t);
-
-    final byteVal = ((val + 1.0) * 127.5).toInt().clamp(0, 255);
-    pcmBytes.addByte(byteVal);
-  }
-
-  final header = createWavHeader(sampleRate, pcmBytes.length);
-  header.add(pcmBytes.takeBytes());
-  File(path).writeAsBytesSync(header.takeBytes());
-}
-
-/// High-pitched coin pickup chime for target hits.
-void generateTargetSfx(String path) {
-  const sampleRate = 11025;
-  const duration = 0.3;
-  const numSamples = (sampleRate * duration);
-  final pcmBytes = BytesBuilder();
-
-  for (int i = 0; i < numSamples; i++) {
-    final t = i / sampleRate;
-    // Play 987 Hz (B5) for first half, then 1318 Hz (E6) for second half
     final freq = t < (duration / 2.0) ? 987.77 : 1318.51;
-    final val = math.sin(2.0 * math.pi * freq * t) * math.exp(-12.0 * t);
+    final val = math.sin(2.0 * math.pi * freq * t) * math.exp(-10.0 * t);
 
-    final byteVal = ((val + 1.0) * 127.5).toInt().clamp(0, 255);
-    pcmBytes.addByte(byteVal);
+    pcmBytes.addByte(((val + 1.0) * 127.5).toInt().clamp(0, 255));
   }
 
   final header = createWavHeader(sampleRate, pcmBytes.length);
   header.add(pcmBytes.takeBytes());
   File(path).writeAsBytesSync(header.takeBytes());
+  print('Generated $path');
 }
 
-/// Down-sweeping rumble crash for gutter loss.
+/// Gutter crash rumble SFX (no unused variables).
 void generateGutterSfx(String path) {
-  const sampleRate = 11025;
-  const duration = 0.5;
+  const sampleRate = 22050;
+  const duration = 0.45;
   const numSamples = (sampleRate * duration);
   final random = math.Random();
   final pcmBytes = BytesBuilder();
 
   for (int i = 0; i < numSamples; i++) {
     final t = i / sampleRate;
-    // Descending rumble base mixed with noise
-    final freq = 120.0 * (1.0 - t / duration);
+    final freq = 130.0 * (1.0 - t / duration);
     final tone = math.sin(2.0 * math.pi * freq * t);
     final noise = random.nextDouble() * 2.0 - 1.0;
-    
     final val = (tone * 0.4 + noise * 0.6) * (1.0 - t / duration);
 
-    final byteVal = ((val + 1.0) * 127.5).toInt().clamp(0, 255);
-    pcmBytes.addByte(byteVal);
+    pcmBytes.addByte(((val + 1.0) * 127.5).toInt().clamp(0, 255));
   }
 
   final header = createWavHeader(sampleRate, pcmBytes.length);
   header.add(pcmBytes.takeBytes());
   File(path).writeAsBytesSync(header.takeBytes());
+  print('Generated $path');
 }

@@ -3,7 +3,6 @@ import 'dart:ui';
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flipoff/game/components/ball.dart';
-import 'package:flipoff/game/audio_controller.dart';
 import 'package:flipoff/game/flipoff_game.dart';
 
 /// A static glassmorphic circular bumper component.
@@ -91,7 +90,7 @@ class Bumper extends BodyComponent<FlipoffGame> with ContactCallbacks {
 
       // Haptic bump collision feedback
       HapticFeedback.lightImpact();
-      GameAudioController.instance.playSfx('sfx_bumper.wav');
+      game.queueSfx('sfx_bumper.wav');
 
       final bumperPos = body.position;
       final ballPos = other.body.position;
