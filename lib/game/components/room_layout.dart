@@ -63,7 +63,7 @@ class RoomLayout extends Component {
 
     // Add asymmetrical flipper with offset
     flipper = DoubleWideFlipper(
-      initialPosition: Vector2(1.5, 13.5 + yOffset),
+      initialPosition: Vector2(1.5, 13.0 + yOffset),
       length: 6.0,
     );
     await add(flipper);

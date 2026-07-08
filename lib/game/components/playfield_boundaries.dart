@@ -14,6 +14,9 @@ class PlayfieldBoundaries extends BodyComponent<FlipoffGame> {
   /// Creates the static boundaries for the game playfield with optional [yOffset].
   PlayfieldBoundaries({this.yOffset = 0.0});
 
+  /// List of boundary fixtures to dynamically modify properties like restitution.
+  final List<Fixture> _fixtures = [];
+
   /// Paint used for outer boundaries.
   late final Paint _wallPaint;
 
@@ -68,18 +71,31 @@ class PlayfieldBoundaries extends BodyComponent<FlipoffGame> {
     final rightWall = EdgeShape()..set(Vector2(width, yOffset), Vector2(width, height + yOffset));
     final topWall = EdgeShape()..set(Vector2(0, yOffset), Vector2(width, yOffset));
 
-    body.createFixture(FixtureDef(leftWall)..friction = 0.1);
-    body.createFixture(FixtureDef(rightWall)..friction = 0.1);
-    body.createFixture(FixtureDef(topWall)..friction = 0.1);
+    _fixtures.add(body.createFixture(FixtureDef(leftWall)..friction = 0.1));
+    _fixtures.add(body.createFixture(FixtureDef(rightWall)..friction = 0.1));
+    _fixtures.add(body.createFixture(FixtureDef(topWall)..friction = 0.1));
 
     // Gutter funneling sloped floor surfaces
     final leftGutter = EdgeShape()..set(Vector2(0, 15.2 + yOffset), Vector2(6.8, 16.0 + yOffset));
     final rightGutter = EdgeShape()..set(Vector2(width, 15.2 + yOffset), Vector2(8.2, 16.0 + yOffset));
 
-    body.createFixture(FixtureDef(leftGutter)..friction = 0.1);
-    body.createFixture(FixtureDef(rightGutter)..friction = 0.1);
+    _fixtures.add(body.createFixture(FixtureDef(leftGutter)..friction = 0.1));
+    _fixtures.add(body.createFixture(FixtureDef(rightGutter)..friction = 0.1));
 
     return body;
+  }
+
+  @override
+  void update(double dt) {
+    super.update(dt);
+
+    // Make walls and sloped floors (ramps) highly bouncy during gutter protection window
+    final isShieldActive = game.ballSaverTimeRemaining > 0.0;
+    final targetRestitution = isShieldActive ? 0.5 : 0.0;
+
+    for (final fixture in _fixtures) {
+      fixture.restitution = targetRestitution;
+    }
   }
 
   @override
