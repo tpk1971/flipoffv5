@@ -33,6 +33,9 @@ class Bumper extends BodyComponent<FlipoffGame> with ContactCallbacks {
   /// Outer neon border paint.
   late final Paint _borderPaint;
 
+  /// Cached paint for rendering collision pulses.
+  late final Paint _glowPaint;
+
   @override
   Future<void> onLoad() async {
     await super.onLoad();
@@ -45,6 +48,10 @@ class Bumper extends BodyComponent<FlipoffGame> with ContactCallbacks {
       ..color = const Color(0xFFFF007F) // Vibrant Neon Pink border outline
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.05;
+
+    _glowPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 0.05);
   }
 
   @override
@@ -128,12 +135,9 @@ class Bumper extends BodyComponent<FlipoffGame> with ContactCallbacks {
 
     // Render additional neon glow shadow if recently struck
     if (_pulseGlow > 0.0) {
-      final glowPaint = Paint()
-        ..color = themeColor.withValues(alpha: 0.4)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 0.15 * _pulseGlow
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 0.05);
-      canvas.drawCircle(Offset.zero, radius, glowPaint);
+      _glowPaint.color = themeColor.withValues(alpha: 0.4);
+      _glowPaint.strokeWidth = 0.15 * _pulseGlow;
+      canvas.drawCircle(Offset.zero, radius, _glowPaint);
     }
 
     // Draw the active glowing border

@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flipoff/game/flipoff_game.dart';
 import 'package:flipoff/game/splash_page.dart';
 import 'package:flipoff/game/audio_controller.dart';
@@ -146,6 +147,8 @@ class GameHud extends StatelessWidget {
                     constraints: const BoxConstraints(),
                     onPressed: () {
                       game.paused = true;
+                      GameAudioController.instance.isPaused = true;
+                      GameAudioController.instance.pauseMusic();
                       game.overlays.add('pause');
                     },
                   ),
@@ -204,6 +207,30 @@ class GameHud extends StatelessWidget {
                     );
                   },
                 ),
+
+                // Real-time FPS badge (Only rendered in debug mode)
+                if (kDebugMode)
+                  ValueListenableBuilder<double>(
+                    valueListenable: game.fpsNotifier,
+                    builder: (context, fps, _) {
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Colors.black45,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: Colors.white24, width: 0.5),
+                        ),
+                        child: Text(
+                          'FPS: ${fps.toStringAsFixed(1)}',
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
               ],
             ),
           ),
@@ -438,6 +465,8 @@ class _PauseOverlayState extends State<PauseOverlay> {
                     color: const Color(0xFFFF9F1C),
                     onPressed: () {
                       widget.game.paused = false;
+                      GameAudioController.instance.isPaused = false;
+                      GameAudioController.instance.resumeMusic();
                       widget.game.overlays.remove('pause');
                     },
                   ),

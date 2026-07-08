@@ -36,6 +36,7 @@ class GameAudioController {
     
     // Initialize the Flame BGM audio player
     FlameAudio.bgm.initialize();
+    await FlameAudio.bgm.audioPlayer.setReleaseMode(ReleaseMode.loop);
     _initialized = true;
   }
 
@@ -78,10 +79,13 @@ class GameAudioController {
     await FlameAudio.bgm.play(file, volume: 0.5);
   }
 
+  /// Whether the game is currently paused. Used to suppress new SFX triggers.
+  bool isPaused = false;
+
   /// Triggers a sound effect by its [name] (e.g. 'sfx_target.wav').
   Future<void> playSfx(String name) async {
     if (!_initialized) await initialize();
-    if (isSfxMuted) return;
+    if (isSfxMuted || isPaused) return;
 
     await FlameAudio.play(name, volume: 0.8);
   }
@@ -92,5 +96,20 @@ class GameAudioController {
       await FlameAudio.bgm.stop();
     }
     _currentMusicFile = null;
+    isPaused = false;
+  }
+
+  /// Pauses the background music.
+  void pauseMusic() {
+    if (_initialized && !isMusicMuted) {
+      FlameAudio.bgm.pause();
+    }
+  }
+
+  /// Resumes the background music loop.
+  void resumeMusic() {
+    if (_initialized && !isMusicMuted) {
+      FlameAudio.bgm.resume();
+    }
   }
 }

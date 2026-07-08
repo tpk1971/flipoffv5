@@ -6,6 +6,7 @@ import 'package:flipoff/game/flipoff_game.dart';
 /// Represents a single star in the parallax starfield.
 class _Star {
   Vector2 position;
+  Offset offset;
   final double speed;
   final double radius;
   final double opacity;
@@ -15,7 +16,11 @@ class _Star {
     required this.speed,
     required this.radius,
     required this.opacity,
-  });
+  }) : offset = Offset(position.x, position.y);
+
+  void updateOffset() {
+    offset = Offset(position.x, position.y);
+  }
 }
 
 /// A component that renders a scrolling multi-layered parallax starfield.
@@ -89,6 +94,7 @@ class Starfield extends PositionComponent with HasGameReference<FlipoffGame> {
         star.position.y = -16.0;
         star.position.x = _random.nextDouble() * 9.0;
       }
+      star.updateOffset();
     }
   }
 
@@ -101,7 +107,7 @@ class Starfield extends PositionComponent with HasGameReference<FlipoffGame> {
 
     for (final star in _stars) {
       _paint.color = themeColor.withValues(alpha: star.opacity);
-      canvas.drawCircle(Offset(star.position.x, star.position.y), star.radius, _paint);
+      canvas.drawCircle(star.offset, star.radius, _paint);
     }
   }
 }

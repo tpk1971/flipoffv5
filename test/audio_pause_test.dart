@@ -45,6 +45,30 @@ void main() {
       expect(cubicEase(0.9), closeTo(0.972, 0.0001));
     });
 
+    test('Safe shield reset triggers properly and does not deduct lives', () {
+      final game = FlipoffGame();
+      game.livesNotifier.value = 10;
+      game.ballSaverTimeRemaining = 4.0; // active shield
+
+      game.requestShieldReset();
+      // Runs game step to process shield reset flag
+      game.update(0.016);
+      
+      // Lives are not deducted on safe resets
+      expect(game.livesNotifier.value, equals(10));
+    });
+
+    test('Audio pause and resume state checks', () {
+      final audio = GameAudioController.instance;
+      audio.isPaused = false;
+      
+      audio.isPaused = true;
+      expect(audio.isPaused, isTrue);
+
+      audio.isPaused = false;
+      expect(audio.isPaused, isFalse);
+    });
+
     testWidgets('PauseOverlay widget instantiation test', (WidgetTester tester) async {
       final game = FlipoffGame();
       

@@ -8,6 +8,7 @@ import 'package:flipoff/game/components/background_grid.dart';
 import 'package:flipoff/game/components/ball.dart';
 import 'package:flipoff/game/components/room_manager.dart';
 import 'package:flipoff/game/components/starfield.dart';
+import 'package:flipoff/game/components/score_popup.dart';
 import 'package:flipoff/game/audio_controller.dart';
 
 /// The core Flame Forge2D game class for Flipoff: Snap.
@@ -44,6 +45,9 @@ class FlipoffGame extends Forge2DGame with TapCallbacks {
   /// Whether the game is currently in a game-over state.
   final ValueNotifier<bool> isGameOverNotifier = ValueNotifier<bool>(false);
 
+  /// Real-time FPS, computed reactively (only visible in devMode/kDebugMode).
+  final ValueNotifier<double> fpsNotifier = ValueNotifier<double>(60.0);
+
   /// Time remaining (in seconds) for the gutter shield / ball saver protection window.
   double ballSaverTimeRemaining = 0.0;
 
@@ -74,9 +78,37 @@ class FlipoffGame extends Forge2DGame with TapCallbacks {
   /// Internal flag to defer ball reset outside the physics contact solver phase.
   bool _shouldResetBall = false;
 
+  /// Internal flag to defer ball shield reset outside the physics contact solver phase.
+  bool _shouldShieldResetBall = false;
+
+  /// Accumulator for calculating frame rate times.
+  double _fpsTime = 0.0;
+
+  /// Counter for frame count.
+  int _fpsFrames = 0;
+
   /// Flags the ball to be reset to its spawn point on the next update frame.
   void requestBallReset() {
     _shouldResetBall = true;
+  }
+
+  /// Flags the ball to be reset to its spawn point using shield protection on the next update frame.
+  void requestShieldReset() {
+    _shouldShieldResetBall = true;
+  }
+
+  /// Resets the ball to the active room's spawn coordinate.
+  void resetBallToSpawn() {
+    final roomIndex = roomManager.currentRoomId == 'room_1' ? 0 : 1;
+    final yOffset = roomIndex * -16.0;
+
+    final spawnPos = roomManager.activeLayout?.config['spawnPosition'] as List<dynamic>?;
+    final sx = spawnPos != null ? (spawnPos[0] as num).toDouble() : 4.5;
+    final sy = spawnPos != null ? (spawnPos[1] as num).toDouble() : 3.0;
+
+    ball.body.setTransform(Vector2(sx, sy + yOffset), 0.0);
+    ball.body.linearVelocity = Vector2.zero();
+    ball.body.angularVelocity = 0.0;
   }
 
   @override
@@ -144,6 +176,15 @@ class FlipoffGame extends Forge2DGame with TapCallbacks {
       camera.viewfinder.position = currentPos + (cameraTargetPosition - currentPos) * (5.0 * dt);
     }
 
+    // Compute FPS in debug/devMode
+    _fpsFrames++;
+    _fpsTime += dt;
+    if (_fpsTime >= 0.5) {
+      fpsNotifier.value = _fpsFrames / _fpsTime;
+      _fpsFrames = 0;
+      _fpsTime = 0.0;
+    }
+
     // Decrement ball saver timer
     if (ballSaverTimeRemaining > 0.0) {
       ballSaverTimeRemaining -= dt;
@@ -155,6 +196,12 @@ class FlipoffGame extends Forge2DGame with TapCallbacks {
         GameAudioController.instance.playSfx(sfx);
       }
       _sfxQueue.clear();
+    }
+
+    if (_shouldShieldResetBall) {
+      _shouldShieldResetBall = false;
+      resetBallToSpawn();
+      world.add(ScorePopup(text: 'SHIELD RESET', position: ball.body.position.clone()));
     }
 
     if (_shouldResetBall) {
@@ -175,18 +222,7 @@ class FlipoffGame extends Forge2DGame with TapCallbacks {
         ball.body.linearVelocity = Vector2.zero();
         ball.body.angularVelocity = 0.0;
       } else {
-        // Reset the ball to the active room's spawn coordinate
-        final roomIndex = roomManager.currentRoomId == 'room_1' ? 0 : 1;
-        final yOffset = roomIndex * -16.0;
-
-        final spawnPos = roomManager.activeLayout?.config['spawnPosition'] as List<dynamic>?;
-        final sx = spawnPos != null ? (spawnPos[0] as num).toDouble() : 4.5;
-        final sy = spawnPos != null ? (spawnPos[1] as num).toDouble() : 3.0;
-
-        ball.body.setTransform(Vector2(sx, sy + yOffset), 0.0);
-        ball.body.linearVelocity = Vector2.zero();
-        ball.body.angularVelocity = 0.0;
-
+        resetBallToSpawn();
         // Reset ball saver shield
         ballSaverTimeRemaining = 5.0;
       }
