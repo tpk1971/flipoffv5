@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flipoff/game/services/user_profile_service.dart';
 import 'package:flipoff/game/shop_overlay.dart';
 import 'package:flipoff/game/locker_page.dart';
+import 'package:flipoff/game/leaderboard_overlay.dart';
 import 'package:flipoff/main.dart';
 
 /// The main menu lobby page for Flipoff: Snap.
@@ -127,6 +128,22 @@ class LobbyPage extends StatelessWidget {
                             MaterialPageRoute<void>(
                               builder: (_) => const LockerPage(),
                             ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 16.0),
+
+                      // 2.5 LEADERBOARD BUTTON
+                      _buildLobbyButton(
+                        context: context,
+                        label: 'HIGH SCORES',
+                        textColor: const Color(0xFF00F5D4), // Neon Teal
+                        borderColor: const Color(0xFF00F5D4),
+                        onTap: () {
+                          showDialog<void>(
+                            context: context,
+                            barrierDismissible: true,
+                            builder: (_) => const LeaderboardOverlay(),
                           );
                         },
                       ),

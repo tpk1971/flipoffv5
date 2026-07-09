@@ -33,6 +33,9 @@ class UserProfile {
   /// The date (in YYYY-MM-DD format) when the daily free games were last checked/reset.
   final String lastResetDate;
 
+  /// The player's top 10 scores tracked locally and synced.
+  final List<int> highScores;
+
   /// Creates a [UserProfile] instance.
   const UserProfile({
     this.dailyFreeGames = 3,
@@ -44,6 +47,7 @@ class UserProfile {
     this.activeFlipperSkin = 'flipper_default',
     this.isInfiniteUnlocked = false,
     this.lastResetDate = '',
+    this.highScores = const [],
   });
 
   /// Instantiates a [UserProfile] from a JSON map.
@@ -64,6 +68,7 @@ class UserProfile {
       activeFlipperSkin: json['activeFlipperSkin'] as String? ?? 'flipper_default',
       isInfiniteUnlocked: json['isInfiniteUnlocked'] as bool? ?? false,
       lastResetDate: json['lastResetDate'] as String? ?? '',
+      highScores: (json['highScores'] as List<dynamic>?)?.map((e) => e as int).toList() ?? const [],
     );
   }
 
@@ -79,6 +84,7 @@ class UserProfile {
       'activeFlipperSkin': activeFlipperSkin,
       'isInfiniteUnlocked': isInfiniteUnlocked,
       'lastResetDate': lastResetDate,
+      'highScores': highScores,
     };
   }
 
@@ -93,6 +99,7 @@ class UserProfile {
     String? activeFlipperSkin,
     bool? isInfiniteUnlocked,
     String? lastResetDate,
+    List<int>? highScores,
   }) {
     return UserProfile(
       dailyFreeGames: dailyFreeGames ?? this.dailyFreeGames,
@@ -104,6 +111,7 @@ class UserProfile {
       activeFlipperSkin: activeFlipperSkin ?? this.activeFlipperSkin,
       isInfiniteUnlocked: isInfiniteUnlocked ?? this.isInfiniteUnlocked,
       lastResetDate: lastResetDate ?? this.lastResetDate,
+      highScores: highScores ?? this.highScores,
     );
   }
 
@@ -119,7 +127,8 @@ class UserProfile {
         other.activeBallSkin == activeBallSkin &&
         other.activeFlipperSkin == activeFlipperSkin &&
         other.isInfiniteUnlocked == isInfiniteUnlocked &&
-        other.lastResetDate == lastResetDate;
+        other.lastResetDate == lastResetDate &&
+        listEquals(other.highScores, highScores);
   }
 
   @override
@@ -134,6 +143,7 @@ class UserProfile {
       activeFlipperSkin,
       isInfiniteUnlocked,
       lastResetDate,
+      Object.hashAll(highScores),
     );
   }
 }

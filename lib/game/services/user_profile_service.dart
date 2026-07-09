@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flipoff/game/models/user_profile.dart';
@@ -169,6 +170,15 @@ class UserProfileService {
       resolvedFreeGames = local.dailyFreeGames < remote.dailyFreeGames ? local.dailyFreeGames : remote.dailyFreeGames;
     }
 
+    final List<int> mergedScores = List<int>.from(local.highScores);
+    for (final score in remote.highScores) {
+      if (!mergedScores.contains(score)) {
+        mergedScores.add(score);
+      }
+    }
+    mergedScores.sort((a, b) => b.compareTo(a));
+    final topMergedScores = mergedScores.take(10).toList();
+
     return UserProfile(
       dailyFreeGames: resolvedFreeGames,
       tokenCount: local.tokenCount > remote.tokenCount ? local.tokenCount : remote.tokenCount,
@@ -179,6 +189,7 @@ class UserProfileService {
       activeFlipperSkin: local.activeFlipperSkin != 'flipper_default' ? local.activeFlipperSkin : remote.activeFlipperSkin,
       isInfiniteUnlocked: local.isInfiniteUnlocked || remote.isInfiniteUnlocked,
       lastResetDate: resolvedResetDate.isNotEmpty ? resolvedResetDate : local.lastResetDate,
+      highScores: topMergedScores,
     );
   }
 
@@ -220,5 +231,65 @@ class UserProfileService {
   /// Increments the glow dust count by [amount].
   void creditGlowDust(int amount) {
     saveProfile(profile.copyWith(glowDustCount: profile.glowDustCount + amount));
+  }
+
+  /// Records a personal high score locally and triggers cloud sync.
+  Future<void> recordScore(int score) async {
+    final scores = List<int>.from(profile.highScores);
+    scores.add(score);
+    scores.sort((a, b) => b.compareTo(a)); // Sort descending
+
+    final topScores = scores.take(10).toList();
+    await saveProfile(profile.copyWith(highScores: topScores));
+  }
+
+  /// Pushes a high score entry to the global leaderboards by invoking the secure
+  /// `submitScore` Firebase Cloud Function.
+  Future<void> submitGlobalScore(int score) async {
+    if (_userId == null) return;
+    try {
+      final callable = FirebaseFunctions.instance.httpsCallable('submitScore');
+      await callable.call<void>(<String, dynamic>{'score': score});
+    } catch (e) {
+      debugPrint('UserProfileService: Failed to submit global score: $e');
+    }
+  }
+
+  /// Fetches the top 10 global all-time high scores from Firestore.
+  Future<List<Map<String, dynamic>>> fetchGlobalLeaderboard() async {
+    try {
+      final query = await FirebaseFirestore.instance
+          .collection('leaderboards')
+          .orderBy('score', descending: true)
+          .limit(10)
+          .get();
+      return query.docs.map((doc) => doc.data()).toList();
+    } catch (e) {
+      debugPrint('UserProfileService: Failed to fetch global leaderboard: $e');
+      return [];
+    }
+  }
+
+  /// Fetches the top 10 global daily high scores (within the last 24 hours).
+  Future<List<Map<String, dynamic>>> fetchDailyLeaderboard() async {
+    try {
+      final todayStart = DateTime.now().subtract(const Duration(hours: 24));
+      final query = await FirebaseFirestore.instance
+          .collection('leaderboards')
+          .where('timestamp', isGreaterThan: Timestamp.fromDate(todayStart))
+          .limit(100)
+          .get();
+      
+      final docs = query.docs.map((doc) => doc.data()).toList();
+      docs.sort((a, b) {
+        final int scoreA = a['score'] as int? ?? 0;
+        final int scoreB = b['score'] as int? ?? 0;
+        return scoreB.compareTo(scoreA);
+      });
+      return docs.take(10).toList();
+    } catch (e) {
+      debugPrint('UserProfileService: Failed to fetch daily leaderboard: $e');
+      return [];
+    }
   }
 }

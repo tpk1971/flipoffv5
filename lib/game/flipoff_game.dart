@@ -9,6 +9,7 @@ import 'package:flipoff/game/components/ball.dart';
 import 'package:flipoff/game/components/room_manager.dart';
 import 'package:flipoff/game/components/starfield.dart';
 import 'package:flipoff/game/components/score_popup.dart';
+import 'package:flipoff/game/services/user_profile_service.dart';
 import 'package:flipoff/game/audio_controller.dart';
 
 /// The core Flame Forge2D game class for Flipoff: Snap.
@@ -216,6 +217,10 @@ class FlipoffGame extends Forge2DGame with TapCallbacks {
         // Trigger Game Over
         isGameOverNotifier.value = true;
         overlays.add('gameOver');
+
+        // Record and submit the final score to local & global leaderboards
+        UserProfileService.instance.recordScore(scoreNotifier.value);
+        UserProfileService.instance.submitGlobalScore(scoreNotifier.value);
 
         // Park the ball off-screen with no speed to prevent collisions
         ball.body.setTransform(Vector2(-100.0, -100.0), 0.0);

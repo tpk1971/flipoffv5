@@ -19,6 +19,7 @@ void main() {
       ),
     );
     await tester.pump();
+    await game.ready();
 
     // Allow async assets to load and children components to mount
     for (int i = 0; i < 10; i++) {
