@@ -2,7 +2,7 @@ import 'dart:math' as math;
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
-import 'package:flutter/foundation.dart' show ValueNotifier;
+import 'package:flutter/foundation.dart' show ValueNotifier, debugPrint;
 import 'package:flutter/painting.dart' show Color;
 import 'package:flipoff/game/components/background_grid.dart';
 import 'package:flipoff/game/components/ball.dart';
@@ -199,6 +199,9 @@ class FlipoffGame extends Forge2DGame with TapCallbacks {
       _sfxQueue.clear();
     }
 
+    // Check if the ball has escaped the playfield boundaries
+    _checkBallOutOfBounds();
+
     if (_shouldShieldResetBall) {
       _shouldShieldResetBall = false;
       resetBallToSpawn();
@@ -230,6 +233,47 @@ class FlipoffGame extends Forge2DGame with TapCallbacks {
         resetBallToSpawn();
         // Reset ball saver shield
         ballSaverTimeRemaining = 5.0;
+      }
+    }
+  }
+
+  /// Checks if the ball has escaped the playfield boundaries.
+  ///
+  /// Monitors the ball's position relative to the current room's horizontal and
+  /// vertical coordinates. If the ball goes beyond the allowed threshold, it is
+  /// considered to have escaped the table. In this case, a life is claimed, and
+  /// if a life is still available, the ball is re-launched at the spawn point.
+  /// If no lives are left, the game is terminated.
+  void _checkBallOutOfBounds() {
+    // If the game is already in a game-over state, bypass checks
+    if (isGameOverNotifier.value) return;
+
+    // Ensure the ball component is fully loaded and its physics body is mounted
+    if (!ball.isMounted) return;
+
+    final pos = ball.body.position;
+
+    // The horizontal boundaries of the playfield (0.0 to 9.0 meters)
+    // We allow a threshold of 1.5 meters out-of-bounds before triggering a reset
+    const minX = -1.5;
+    const maxX = 10.5;
+
+    // The vertical boundaries depend on the active room index
+    final roomIndex = roomManager.currentRoomId == 'room_1' ? 0 : 1;
+    final yOffset = roomIndex * -16.0;
+
+    // Playfield height is 16 meters. Allow a threshold below the bottom drain and above the ceiling
+    final minY = yOffset - 2.5;
+    final maxY = yOffset + 18.5;
+
+    if (pos.x < minX || pos.x > maxX || pos.y < minY || pos.y > maxY) {
+      debugPrint('FlipoffGame: Ball escaped boundary at (${pos.x.toStringAsFixed(2)}, ${pos.y.toStringAsFixed(2)}). Resetting...');
+
+      if (ballSaverTimeRemaining > 0.0) {
+        requestShieldReset();
+      } else {
+        queueSfx('sfx_gutter.wav');
+        requestBallReset();
       }
     }
   }

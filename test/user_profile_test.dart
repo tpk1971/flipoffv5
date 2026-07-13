@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flipoff/game/models/user_profile.dart';
 import 'package:flipoff/game/services/user_profile_service.dart';
+import 'fakes.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -38,10 +39,16 @@ void main() {
 
   group('UserProfileService Tests', () {
     late UserProfileService service;
+    late FakeFirebaseAuth fakeAuth;
+    late FakeFirebaseFirestore fakeFirestore;
 
     setUp(() {
       SharedPreferences.setMockInitialValues({});
       service = UserProfileService.instance;
+      fakeAuth = FakeFirebaseAuth();
+      fakeFirestore = FakeFirebaseFirestore();
+      service.authInstance = fakeAuth;
+      service.firestoreInstance = fakeFirestore;
     });
 
     test('Initializes with default profile when cache is empty', () async {
@@ -96,6 +103,32 @@ void main() {
       expect(success, isTrue);
       expect(service.profile.dailyFreeGames, 0);
       expect(service.profile.tokenCount, 0);
+    });
+
+    test('Stale cached session (INVALID_REFRESH_TOKEN) is automatically signed out', () async {
+      final invalidUser = FakeUser(uid: 'invalid_token_uid');
+      fakeAuth.mockSetCurrentUser(invalidUser);
+
+      expect(fakeAuth.currentUser, isNotNull);
+      expect(fakeAuth.currentUser!.uid, 'invalid_token_uid');
+
+      await service.initialize();
+
+      expect(fakeAuth.currentUser, isNull);
+      expect(service.userId, isNull);
+    });
+
+    test('Valid cached session is successfully preserved', () async {
+      final validUser = FakeUser(uid: 'valid_uid_789');
+      fakeAuth.mockSetCurrentUser(validUser);
+
+      expect(fakeAuth.currentUser, isNotNull);
+      expect(fakeAuth.currentUser!.uid, 'valid_uid_789');
+
+      await service.initialize();
+
+      expect(fakeAuth.currentUser, isNotNull);
+      expect(service.userId, 'valid_uid_789');
     });
   });
 }

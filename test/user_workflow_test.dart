@@ -6,17 +6,24 @@ import 'package:flipoff/game/services/user_profile_service.dart';
 import 'package:flipoff/game/lobby_page.dart';
 import 'package:flipoff/game/locker_page.dart';
 import 'package:flipoff/game/shop_overlay.dart';
+import 'fakes.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
-    UserProfileService.instance.mockUserId = 'mock_uid_abc';
+    final service = UserProfileService.instance;
+    service.authInstance = FakeFirebaseAuth();
+    service.firestoreInstance = FakeFirebaseFirestore();
+    service.mockUserId = 'mock_uid_abc';
   });
 
   group('User Workflow Widget Tests', () {
     testWidgets('LobbyPage displays correct token and dust balances', (WidgetTester tester) async {
+      await tester.binding.setSurfaceSize(const Size(1080, 1920));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
       await UserProfileService.instance.initialize();
       const testProfile = UserProfile(
         dailyFreeGames: 2,
@@ -38,6 +45,9 @@ void main() {
     });
 
     testWidgets('LockerPage displays locked/active skin states', (WidgetTester tester) async {
+      await tester.binding.setSurfaceSize(const Size(1080, 1920));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
       await UserProfileService.instance.initialize();
       const testProfile = UserProfile(
         glowDustCount: 50,
@@ -62,6 +72,9 @@ void main() {
     });
 
     testWidgets('ShopOverlay displays item options', (WidgetTester tester) async {
+      await tester.binding.setSurfaceSize(const Size(1080, 1920));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
       await UserProfileService.instance.initialize();
       const testProfile = UserProfile(tokenCount: 10, dailyFreeGames: 3);
       await UserProfileService.instance.saveProfile(testProfile);

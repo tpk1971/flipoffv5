@@ -31,6 +31,12 @@ class UserProfileService {
   /// The authenticated user ID (null if not authenticated yet).
   String? _userId;
 
+  /// The custom [FirebaseAuth] instance. Used primarily for unit testing.
+  FirebaseAuth? _authInstance;
+
+  /// The custom [FirebaseFirestore] instance. Used primarily for unit testing.
+  FirebaseFirestore? _firestoreInstance;
+
   /// Gets the authenticated user ID.
   String? get userId => _userId;
 
@@ -42,14 +48,64 @@ class UserProfileService {
   @visibleForTesting
   set mockUserId(String? mockUid) => _userId = mockUid;
 
+  /// Sets the [FirebaseAuth] instance (primarily for testing purposes).
+  @visibleForTesting
+  set authInstance(FirebaseAuth auth) => _authInstance = auth;
+
+  /// Gets the active [FirebaseAuth] instance.
+  FirebaseAuth get authInstance => _authInstance ?? FirebaseAuth.instance;
+
+  /// Sets the [FirebaseFirestore] instance (primarily for testing purposes).
+  @visibleForTesting
+  set firestoreInstance(FirebaseFirestore firestore) => _firestoreInstance = firestore;
+
+  /// Gets the active [FirebaseFirestore] instance.
+  FirebaseFirestore get firestoreInstance => _firestoreInstance ?? FirebaseFirestore.instance;
+
   /// Initializes local storage cache and checks for an active authenticated session.
+  ///
+  /// Loads the cached [UserProfile] from SharedPreferences, checks if there is
+  /// an active FirebaseAuth session, and verifies it by forcing a token refresh.
+  /// If the token is invalid (e.g. because of restarted emulators), signs out
+  /// the user to prevent stale auth states.
   Future<void> initialize() async {
     _prefs ??= await SharedPreferences.getInstance();
 
     // 1. Check if a Firebase Auth session is already active
-    final currentUser = FirebaseAuth.instance.currentUser;
+    final currentUser = authInstance.currentUser;
     if (currentUser != null) {
-      _userId = currentUser.uid;
+      try {
+        // Force refresh the token to verify if the session is still valid (e.g. not invalidated by an emulator restart)
+        await currentUser.getIdToken(true);
+        _userId = currentUser.uid;
+      } on FirebaseAuthException catch (e) {
+        if (e.code == 'user-token-expired' ||
+            e.code == 'user-not-found' ||
+            e.code == 'invalid-credential' ||
+            (e.message?.contains('INVALID_REFRESH_TOKEN') ?? false)) {
+          debugPrint('UserProfileService: Cached session is invalid, signing out: ${e.message}');
+          try {
+            await authInstance.signOut();
+          } catch (_) {}
+          _userId = null;
+        } else {
+          // Keep the cached user ID for other issues (like transient network failures)
+          _userId = currentUser.uid;
+        }
+      } catch (e) {
+        final errStr = e.toString();
+        if (errStr.contains('INVALID_REFRESH_TOKEN') ||
+            errStr.contains('user-not-found') ||
+            errStr.contains('user-token-expired')) {
+          debugPrint('UserProfileService: Cached session is invalid, signing out: $e');
+          try {
+            await authInstance.signOut();
+          } catch (_) {}
+          _userId = null;
+        } else {
+          _userId = currentUser.uid;
+        }
+      }
     }
 
     // 2. Load the initial cached profile locally
@@ -69,7 +125,7 @@ class UserProfileService {
   /// Performs anonymous guest authentication, then triggers Firestore syncing.
   Future<void> loginAnonymously() async {
     try {
-      final credentials = await FirebaseAuth.instance.signInAnonymously();
+      final credentials = await authInstance.signInAnonymously();
       _userId = credentials.user?.uid;
     } catch (e) {
       debugPrint('UserProfileService: Anonymous Auth failed/offline: $e');
@@ -118,7 +174,7 @@ class UserProfileService {
 
     // Save to Firestore asynchronously
     if (_userId != null) {
-      FirebaseFirestore.instance
+      firestoreInstance
           .collection('users')
           .doc(_userId)
           .set(newProfile.toJson(), SetOptions(merge: true))
@@ -134,7 +190,7 @@ class UserProfileService {
     if (_userId == null) return;
 
     try {
-      final docRef = FirebaseFirestore.instance.collection('users').doc(_userId!);
+      final docRef = firestoreInstance.collection('users').doc(_userId!);
       final docSnap = await docRef.get();
 
       if (docSnap.exists && docSnap.data() != null) {
@@ -258,7 +314,7 @@ class UserProfileService {
   /// Fetches the top 10 global all-time high scores from Firestore.
   Future<List<Map<String, dynamic>>> fetchGlobalLeaderboard() async {
     try {
-      final query = await FirebaseFirestore.instance
+      final query = await firestoreInstance
           .collection('leaderboards')
           .orderBy('score', descending: true)
           .limit(10)
@@ -274,7 +330,7 @@ class UserProfileService {
   Future<List<Map<String, dynamic>>> fetchDailyLeaderboard() async {
     try {
       final todayStart = DateTime.now().subtract(const Duration(hours: 24));
-      final query = await FirebaseFirestore.instance
+      final query = await firestoreInstance
           .collection('leaderboards')
           .where('timestamp', isGreaterThan: Timestamp.fromDate(todayStart))
           .limit(100)

@@ -207,30 +207,6 @@ class GameHud extends StatelessWidget {
                     );
                   },
                 ),
-
-                // Real-time FPS badge (Only rendered in debug mode)
-                if (kDebugMode)
-                  ValueListenableBuilder<double>(
-                    valueListenable: game.fpsNotifier,
-                    builder: (context, fps, _) {
-                      return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: Colors.black45,
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: Colors.white24, width: 0.5),
-                        ),
-                        child: Text(
-                          'FPS: ${fps.toStringAsFixed(1)}',
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
               ],
             ),
           ),

@@ -19,6 +19,9 @@ void main() {
     );
     await tester.pump();
 
+    // Wait for the Flame game engine to be fully loaded and components mounted
+    await game.ready();
+
     // Allow async assets to load and children components to mount
     for (int i = 0; i < 10; i++) {
       game.update(0.016);
