@@ -84,9 +84,10 @@ class FlipoffGame extends Forge2DGame with TapCallbacks {
 
     if (ballsToSpawn == 0) return;
 
-    final roomIndex = roomManager.currentRoomId == 'room_1' ? 0 : 1;
+    final hasRoomManager = isLoaded && children.whereType<RoomManager>().isNotEmpty;
+    final roomIndex = (hasRoomManager && roomManager.currentRoomId == 'room_2') ? 1 : 0;
     final yOffset = roomIndex * -16.0;
-    final spawnPos = roomManager.activeLayout?.config['spawnPosition'] as List<dynamic>?;
+    final spawnPos = hasRoomManager ? roomManager.activeLayout?.config['spawnPosition'] as List<dynamic>? : null;
     final sx = spawnPos != null ? (spawnPos[0] as num).toDouble() : 4.5;
     final sy = spawnPos != null ? (spawnPos[1] as num).toDouble() : 3.0;
 
@@ -133,7 +134,9 @@ class FlipoffGame extends Forge2DGame with TapCallbacks {
     }
 
     // Reset primary ball position and reload Room 1
-    roomManager.requestRoomTransition('room_1');
+    if (isLoaded && children.whereType<RoomManager>().isNotEmpty) {
+      roomManager.requestRoomTransition('room_1');
+    }
   }
 
   /// Target camera viewport center coordinates (for smooth vertical transitions).
@@ -163,17 +166,20 @@ class FlipoffGame extends Forge2DGame with TapCallbacks {
 
   /// Resets the ball to the active room's spawn coordinate.
   void resetBallToSpawn() {
-    final roomIndex = roomManager.currentRoomId == 'room_1' ? 0 : 1;
+    final hasRoomManager = isLoaded && children.whereType<RoomManager>().isNotEmpty;
+    final roomIndex = (hasRoomManager && roomManager.currentRoomId == 'room_2') ? 1 : 0;
     final yOffset = roomIndex * -16.0;
 
-    final spawnPos = roomManager.activeLayout?.config['spawnPosition'] as List<dynamic>?;
+    final spawnPos = hasRoomManager ? roomManager.activeLayout?.config['spawnPosition'] as List<dynamic>? : null;
     final sx = spawnPos != null ? (spawnPos[0] as num).toDouble() : 4.5;
     final sy = spawnPos != null ? (spawnPos[1] as num).toDouble() : 3.0;
 
-    final primary = activeBalls.isNotEmpty ? activeBalls.first : ball;
-    primary.body.setTransform(Vector2(sx, sy + yOffset), 0.0);
-    primary.body.linearVelocity = Vector2.zero();
-    primary.body.angularVelocity = 0.0;
+    final primary = activeBalls.isNotEmpty ? activeBalls.first : (isLoaded && children.whereType<Ball>().isNotEmpty ? ball : null);
+    if (primary != null) {
+      primary.body.setTransform(Vector2(sx, sy + yOffset), 0.0);
+      primary.body.linearVelocity = Vector2.zero();
+      primary.body.angularVelocity = 0.0;
+    }
   }
 
   @override
@@ -235,15 +241,29 @@ class FlipoffGame extends Forge2DGame with TapCallbacks {
   void update(double dt) {
     super.update(dt);
 
-    // Smoothly pan camera viewfinder toward target position using the explicit setter (skip if roomManager is easing)
-    if (!roomManager.isCameraPanning) {
-      final target = leadBall.body.position;
-      final roomIndex = roomManager.currentRoomId == 'room_1' ? 0 : 1;
-      final yOffset = roomIndex * -16.0;
-      final clampedY = target.y.clamp(yOffset + 4.0, yOffset + 12.0);
-      final cameraTarget = Vector2(4.5, clampedY);
-      final currentPos = camera.viewfinder.position;
-      camera.viewfinder.position = currentPos + (cameraTarget - currentPos) * (5.0 * dt);
+    // Keep camera viewfinder position anchored to active room center unless roomManager is easing
+    if (isLoaded && children.whereType<RoomManager>().isNotEmpty && !roomManager.isCameraPanning) {
+      camera.viewfinder.position = cameraTargetPosition;
+    }
+
+    // Active ball safety check: verify at least 1 active ball exists within room boundaries
+    if (isLoaded && !isGameOverNotifier.value && children.whereType<RoomManager>().isNotEmpty && !roomManager.isCameraPanning && !roomManager.isTransitionPending) {
+      final validBalls = activeBalls.where((b) {
+        if (!b.isMounted) return false;
+        final pos = b.body.position;
+        final roomIndex = roomManager.currentRoomId == 'room_2' ? 1 : 0;
+        final yOffset = roomIndex * -16.0;
+        return pos.x >= -1.5 && pos.x <= 10.5 && pos.y >= (yOffset - 2.5) && pos.y <= (yOffset + 18.5);
+      }).toList();
+
+      if (validBalls.isEmpty) {
+        debugPrint('FlipoffGame: No valid active ball within room bounds. Assuming lost life.');
+        if (ballSaverTimeRemaining > 0.0) {
+          requestShieldReset();
+        } else {
+          requestBallReset();
+        }
+      }
     }
 
     // Compute FPS in debug/devMode
@@ -274,7 +294,8 @@ class FlipoffGame extends Forge2DGame with TapCallbacks {
     if (_shouldShieldResetBall) {
       _shouldShieldResetBall = false;
       resetBallToSpawn();
-      world.add(ScorePopup(text: 'SHIELD RESET', position: ball.body.position.clone()));
+      final pos = activeBalls.isNotEmpty ? activeBalls.first.body.position : (isLoaded && children.whereType<Ball>().isNotEmpty ? ball.body.position : Vector2.all(4.5));
+      world.add(ScorePopup(text: 'SHIELD RESET', position: pos.clone()));
     }
 
     if (_shouldResetBall) {
@@ -325,7 +346,8 @@ class FlipoffGame extends Forge2DGame with TapCallbacks {
     const maxX = 10.5;
 
     // The vertical boundaries depend on the active room index
-    final roomIndex = roomManager.currentRoomId == 'room_1' ? 0 : 1;
+    final hasRoomManager = isLoaded && children.whereType<RoomManager>().isNotEmpty;
+    final roomIndex = (hasRoomManager && roomManager.currentRoomId == 'room_2') ? 1 : 0;
     final yOffset = roomIndex * -16.0;
 
     // Playfield height is 16 meters. Allow a threshold below the bottom drain and above the ceiling

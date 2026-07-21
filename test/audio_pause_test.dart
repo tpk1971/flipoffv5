@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flipoff/game/flipoff_game.dart';
 import 'package:flipoff/game/audio_controller.dart';
 import 'package:flipoff/main.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  SharedPreferences.setMockInitialValues({});
 
   group('Audio & Pause Tests (Milestone 10)', () {
     test('GameAudioController toggling mute values', () {

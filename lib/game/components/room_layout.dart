@@ -84,9 +84,12 @@ class RoomLayout extends Component {
 
     // Add targets
     final targetsList = config['targets'] as List<dynamic>? ?? [];
-    final math.Random random = math.Random();
+    final math.Random random = math.Random(1337 + roomIndex * 37); // Deterministic seed per room for consistent layout properties
     final bonusIndices = <int>{};
     int? multiballIndex;
+
+    // Determine if this room qualifies for a Multiball Target (~25% of tables)
+    final bool allowMultiball = config['hasMultiball'] as bool? ?? (roomIndex % 4 == 1 || random.nextDouble() < 0.25);
 
     if (targetsList.isNotEmpty) {
       // Allow maximum 1 bonus life target per room layout
@@ -95,28 +98,44 @@ class RoomLayout extends Component {
         bonusIndices.add(random.nextInt(targetsList.length));
       }
 
-      // Designate 1 target as the Multiball Target
-      final candidates = List<int>.generate(targetsList.length, (idx) => idx)
-          .where((idx) => !bonusIndices.contains(idx))
-          .toList();
-      if (candidates.isNotEmpty) {
-        multiballIndex = candidates[random.nextInt(candidates.length)];
-      } else {
-        multiballIndex = 0;
+      if (allowMultiball) {
+        // Designate 1 target as the Multiball Target
+        final candidates = List<int>.generate(targetsList.length, (idx) => idx)
+            .where((idx) => !bonusIndices.contains(idx))
+            .toList();
+        if (candidates.isNotEmpty) {
+          multiballIndex = candidates[random.nextInt(candidates.length)];
+        }
       }
     }
+
+    // Dynamic multi-hit target probability scaling based on room index depth
+    final double multiHitChance = roomIndex == 0 ? 0.0 : math.min(0.8, 0.25 + roomIndex * 0.25);
+    final int baseMaxHits = roomIndex == 0 ? 1 : math.min(5, 2 + (roomIndex - 1));
 
     for (int i = 0; i < targetsList.length; i++) {
       final targetData = targetsList[i];
       final x = (targetData['x'] as num).toDouble();
       final y = (targetData['y'] as num).toDouble();
       final isBonusLife = bonusIndices.contains(i);
-      final isMultiballTarget = i == multiballIndex;
+      final isMultiballTarget = multiballIndex != null && i == multiballIndex;
+
+      // Determine required hits for this target
+      int maxHits = 1;
+      if (targetData['maxHits'] != null) {
+        maxHits = (targetData['maxHits'] as num).toInt();
+      } else if (!isBonusLife && !isMultiballTarget && roomIndex > 0) {
+        if (random.nextDouble() < multiHitChance) {
+          maxHits = baseMaxHits;
+        }
+      }
+
       await add(
         Target(
           initialPosition: Vector2(x, y + yOffset),
           isBonusLife: isBonusLife,
           isMultiballTarget: isMultiballTarget,
+          maxHits: maxHits,
         ),
       );
     }

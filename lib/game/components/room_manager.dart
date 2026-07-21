@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:flame/components.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flipoff/game/components/room_layout.dart';
@@ -72,17 +73,27 @@ class RoomManager extends Component with HasGameReference<FlipoffGame> {
   }
 
   /// Callback when the ball successfully triggers the active exit portal.
+  int _carriedBallCount = 1;
+  int _deferredCarriedBallCount = 1;
+
+  /// Flags if a transition hold is currently pending.
+  bool get isTransitionPending => _isTransitionPending;
+
+  /// Callback when the ball successfully triggers the active exit portal.
   void onPortalEntered() {
     final nextRoomId = _activeLayout?.config['portal']['nextRoomIdId'] ??
         _activeLayout?.config['portal']['nextRoomId'] ??
         'room_1';
+
+    // Capture the count of active balls currently in play to persist across room transitions
+    _carriedBallCount = math.max(1, game.activeBalls.length);
 
     // Initiate Phase 1: 1.0 second hold on current room before panning
     _pendingRoomId = nextRoomId;
     _isTransitionPending = true;
     _transitionHoldTimer = 1.0;
 
-    // Freeze ball in portal to avoid falling/rolling
+    // Freeze primary ball in portal to avoid falling/rolling
     game.ball.body.linearVelocity = Vector2.zero();
     game.ball.body.angularVelocity = 0.0;
 
@@ -152,6 +163,9 @@ class RoomManager extends Component with HasGameReference<FlipoffGame> {
     final roomIndex = nextRoomId == 'room_1' ? 0 : 1;
     _remainingTargets = (config['targets'] as List<dynamic>? ?? []).length;
 
+    // Save carried ball count for deferred spawn
+    _deferredCarriedBallCount = _carriedBallCount;
+
     // Create and add the new layout
     final newLayout = RoomLayout(roomIndex: roomIndex, config: config);
     await game.world.add(newLayout);
@@ -218,11 +232,16 @@ class RoomManager extends Component with HasGameReference<FlipoffGame> {
       if (_cameraPanProgress >= 1.0) {
         _isCameraPanning = false;
 
-        // Pan complete, launch the ball and trigger 5s gutter shield protection
+        // Pan complete, launch primary ball and trigger 5s gutter shield protection
         game.ball.body.setTransform(Vector2(_deferredSpawnX, _deferredSpawnY + _deferredRoomIndex * -16.0), 0.0);
         game.ball.body.linearVelocity = Vector2.zero();
         game.ball.body.angularVelocity = 0.0;
         game.ballSaverTimeRemaining = 5.0;
+
+        // Persist multiball: if carried ball count > 1, release additional balls
+        if (_deferredCarriedBallCount > 1) {
+          game.triggerMultiball(totalBalls: _deferredCarriedBallCount);
+        }
       }
     }
 
