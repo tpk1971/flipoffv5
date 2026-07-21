@@ -130,6 +130,8 @@ class Target extends BodyComponent<FlipoffGame> with ContactCallbacks {
   void beginContact(Object other, Contact contact) {
     super.beginContact(other, contact);
     if (other is Ball) {
+      if (remainingHits <= 0) return;
+
       final pos = body.position.clone();
       final multiplier = game.scoreMultiplierNotifier.value;
       final themeColor = isMultiballTarget

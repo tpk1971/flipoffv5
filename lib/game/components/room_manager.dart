@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flame/components.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flipoff/game/components/room_layout.dart';
+import 'package:flipoff/game/components/target.dart';
 import 'package:flipoff/game/components/level_up_popup.dart';
 import 'package:flipoff/game/audio_controller.dart';
 import 'package:flipoff/game/flipoff_game.dart';
@@ -66,9 +67,9 @@ class RoomManager extends Component with HasGameReference<FlipoffGame> {
   void onTargetHit() {
     if (_remainingTargets > 0) {
       _remainingTargets--;
-      if (_remainingTargets == 0) {
-        _activeLayout?.portal.unlock();
-      }
+    }
+    if (_remainingTargets <= 0) {
+      _activeLayout?.portal.unlock();
     }
   }
 
@@ -206,6 +207,18 @@ class RoomManager extends Component with HasGameReference<FlipoffGame> {
   @override
   void update(double dt) {
     super.update(dt);
+
+    // Target safety audit: verify if active room has 0 remaining mounted targets, unlocking the portal
+    if (_activeLayout != null && !_activeLayout!.portal.unlocked) {
+      final activeTargets = _activeLayout!.children
+          .whereType<Target>()
+          .where((t) => t.isMounted && t.remainingHits > 0)
+          .toList();
+      if (activeTargets.isEmpty) {
+        _remainingTargets = 0;
+        _activeLayout!.portal.unlock();
+      }
+    }
 
     // Handle initial hold timer (Phase 1)
     if (_isTransitionPending) {
