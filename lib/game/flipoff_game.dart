@@ -40,8 +40,11 @@ class FlipoffGame extends Forge2DGame with TapCallbacks {
   /// The player's current score, tracked reactively.
   final ValueNotifier<int> scoreNotifier = ValueNotifier<int>(0);
 
-  /// The player's remaining lives. Starts at 10, max 15.
-  final ValueNotifier<int> livesNotifier = ValueNotifier<int>(10);
+  /// The player's remaining lives. Starts at 3, max 15.
+  final ValueNotifier<int> livesNotifier = ValueNotifier<int>(3);
+
+  /// The active score multiplier (e.g. 1x default, 3x during 3-ball multiball).
+  final ValueNotifier<int> scoreMultiplierNotifier = ValueNotifier<int>(1);
 
   /// Whether the game is currently in a game-over state.
   final ValueNotifier<bool> isGameOverNotifier = ValueNotifier<bool>(false);
@@ -55,21 +58,81 @@ class FlipoffGame extends Forge2DGame with TapCallbacks {
   /// Queue of SFX asset names to be played outside the Box2D solver phase.
   final List<String> _sfxQueue = [];
 
+  /// Returns all currently active [Ball] instances mounted in the game world.
+  List<Ball> get activeBalls => world.children.whereType<Ball>().toList();
+
+  /// Gets the primary lead ball for camera tracking and single-ball physics references.
+  Ball get leadBall {
+    final balls = activeBalls;
+    if (balls.isEmpty) return ball;
+    // Follow the ball closest to the flippers (highest y coordinate)
+    return balls.reduce((a, b) => a.body.position.y > b.body.position.y ? a : b);
+  }
+
   /// Enqueues an SFX to be played safely on the next main loop frame update tick.
   void queueSfx(String name) {
     _sfxQueue.add(name);
   }
 
-  /// Resets the game to its initial state, clearing score, setting lives to 10,
+  /// Triggers a Multiball Frenzy mode, spawning extra pinballs at the room spawn point
+  /// and increasing the active score multiplier.
+  void triggerMultiball({int totalBalls = 3}) {
+    if (isGameOverNotifier.value) return;
+
+    final currentCount = activeBalls.length;
+    final ballsToSpawn = math.max(0, totalBalls - currentCount);
+
+    if (ballsToSpawn == 0) return;
+
+    final roomIndex = roomManager.currentRoomId == 'room_1' ? 0 : 1;
+    final yOffset = roomIndex * -16.0;
+    final spawnPos = roomManager.activeLayout?.config['spawnPosition'] as List<dynamic>?;
+    final sx = spawnPos != null ? (spawnPos[0] as num).toDouble() : 4.5;
+    final sy = spawnPos != null ? (spawnPos[1] as num).toDouble() : 3.0;
+
+    final basePos = Vector2(sx, sy + yOffset);
+
+    // Dynamic initial impulse vectors for extra spawned balls
+    final impulses = [
+      Vector2(-2.5, 3.0),
+      Vector2(2.5, 3.0),
+    ];
+
+    for (int i = 0; i < ballsToSpawn; i++) {
+      final extraBall = Ball(initialPosition: basePos.clone());
+      world.add(extraBall);
+
+      // Apply initial impulse after physics body is created
+      final impulse = i < impulses.length ? impulses[i] : Vector2(0, 2.0);
+      Future.microtask(() {
+        if (extraBall.isMounted) {
+          extraBall.body.applyLinearImpulse(impulse);
+        }
+      });
+    }
+
+    scoreMultiplierNotifier.value = currentCount + ballsToSpawn;
+    queueSfx('sfx_multiball.wav');
+    world.add(ScorePopup(text: '3x MULTIBALL!', position: Vector2(4.5, 8.0 + yOffset)));
+  }
+
+  /// Resets the game to its initial state, clearing score, setting lives to 3,
   /// clearing the game over state, and reloading the first room.
   void resetGame() {
     scoreNotifier.value = 0;
-    livesNotifier.value = 10;
+    livesNotifier.value = 3;
+    scoreMultiplierNotifier.value = 1;
     isGameOverNotifier.value = false;
     ballSaverTimeRemaining = 5.0;
     overlays.remove('gameOver');
 
-    // Reset ball position and reload Room 1
+    // Remove any extra multiball instances
+    final balls = activeBalls;
+    for (int i = 1; i < balls.length; i++) {
+      balls[i].removeFromParent();
+    }
+
+    // Reset primary ball position and reload Room 1
     roomManager.requestRoomTransition('room_1');
   }
 
@@ -107,9 +170,10 @@ class FlipoffGame extends Forge2DGame with TapCallbacks {
     final sx = spawnPos != null ? (spawnPos[0] as num).toDouble() : 4.5;
     final sy = spawnPos != null ? (spawnPos[1] as num).toDouble() : 3.0;
 
-    ball.body.setTransform(Vector2(sx, sy + yOffset), 0.0);
-    ball.body.linearVelocity = Vector2.zero();
-    ball.body.angularVelocity = 0.0;
+    final primary = activeBalls.isNotEmpty ? activeBalls.first : ball;
+    primary.body.setTransform(Vector2(sx, sy + yOffset), 0.0);
+    primary.body.linearVelocity = Vector2.zero();
+    primary.body.angularVelocity = 0.0;
   }
 
   @override
@@ -173,8 +237,13 @@ class FlipoffGame extends Forge2DGame with TapCallbacks {
 
     // Smoothly pan camera viewfinder toward target position using the explicit setter (skip if roomManager is easing)
     if (!roomManager.isCameraPanning) {
+      final target = leadBall.body.position;
+      final roomIndex = roomManager.currentRoomId == 'room_1' ? 0 : 1;
+      final yOffset = roomIndex * -16.0;
+      final clampedY = target.y.clamp(yOffset + 4.0, yOffset + 12.0);
+      final cameraTarget = Vector2(4.5, clampedY);
       final currentPos = camera.viewfinder.position;
-      camera.viewfinder.position = currentPos + (cameraTargetPosition - currentPos) * (5.0 * dt);
+      camera.viewfinder.position = currentPos + (cameraTarget - currentPos) * (5.0 * dt);
     }
 
     // Compute FPS in debug/devMode
@@ -199,7 +268,7 @@ class FlipoffGame extends Forge2DGame with TapCallbacks {
       _sfxQueue.clear();
     }
 
-    // Check if the ball has escaped the playfield boundaries
+    // Check if any ball has escaped the playfield boundaries
     _checkBallOutOfBounds();
 
     if (_shouldShieldResetBall) {
@@ -225,10 +294,12 @@ class FlipoffGame extends Forge2DGame with TapCallbacks {
         UserProfileService.instance.recordScore(scoreNotifier.value);
         UserProfileService.instance.submitGlobalScore(scoreNotifier.value);
 
-        // Park the ball off-screen with no speed to prevent collisions
-        ball.body.setTransform(Vector2(-100.0, -100.0), 0.0);
-        ball.body.linearVelocity = Vector2.zero();
-        ball.body.angularVelocity = 0.0;
+        // Park all active balls off-screen with no speed to prevent collisions
+        for (final b in activeBalls) {
+          b.body.setTransform(Vector2(-100.0, -100.0), 0.0);
+          b.body.linearVelocity = Vector2.zero();
+          b.body.angularVelocity = 0.0;
+        }
       } else {
         resetBallToSpawn();
         // Reset ball saver shield
@@ -237,24 +308,19 @@ class FlipoffGame extends Forge2DGame with TapCallbacks {
     }
   }
 
-  /// Checks if the ball has escaped the playfield boundaries.
+  /// Checks if any active ball has escaped the playfield boundaries.
   ///
-  /// Monitors the ball's position relative to the current room's horizontal and
-  /// vertical coordinates. If the ball goes beyond the allowed threshold, it is
-  /// considered to have escaped the table. In this case, a life is claimed, and
-  /// if a life is still available, the ball is re-launched at the spawn point.
-  /// If no lives are left, the game is terminated.
+  /// Monitors each ball's position. If multiple balls are in play (Multiball Mode),
+  /// an escaped ball is removed without deducting a life, reducing the score multiplier.
+  /// If only one ball remains, standard life deduction and ball reset/game over occurs.
   void _checkBallOutOfBounds() {
     // If the game is already in a game-over state, bypass checks
     if (isGameOverNotifier.value) return;
 
-    // Ensure the ball component is fully loaded and its physics body is mounted
-    if (!ball.isMounted) return;
-
-    final pos = ball.body.position;
+    final currentBalls = activeBalls;
+    if (currentBalls.isEmpty) return;
 
     // The horizontal boundaries of the playfield (0.0 to 9.0 meters)
-    // We allow a threshold of 1.5 meters out-of-bounds before triggering a reset
     const minX = -1.5;
     const maxX = 10.5;
 
@@ -266,14 +332,25 @@ class FlipoffGame extends Forge2DGame with TapCallbacks {
     final minY = yOffset - 2.5;
     final maxY = yOffset + 18.5;
 
-    if (pos.x < minX || pos.x > maxX || pos.y < minY || pos.y > maxY) {
-      debugPrint('FlipoffGame: Ball escaped boundary at (${pos.x.toStringAsFixed(2)}, ${pos.y.toStringAsFixed(2)}). Resetting...');
+    for (final b in currentBalls) {
+      if (!b.isMounted) continue;
+      final pos = b.body.position;
 
-      if (ballSaverTimeRemaining > 0.0) {
-        requestShieldReset();
-      } else {
-        queueSfx('sfx_gutter.wav');
-        requestBallReset();
+      if (pos.x < minX || pos.x > maxX || pos.y < minY || pos.y > maxY) {
+        debugPrint('FlipoffGame: Ball escaped boundary at (${pos.x.toStringAsFixed(2)}, ${pos.y.toStringAsFixed(2)}).');
+
+        if (ballSaverTimeRemaining > 0.0) {
+          requestShieldReset();
+        } else if (currentBalls.length > 1) {
+          // Multiball drain safety: remove individual ball without deducting life
+          queueSfx('sfx_gutter.wav');
+          b.removeFromParent();
+          scoreMultiplierNotifier.value = math.max(1, currentBalls.length - 1);
+        } else {
+          // Final ball drain: deduct 1 life
+          queueSfx('sfx_gutter.wav');
+          requestBallReset();
+        }
       }
     }
   }

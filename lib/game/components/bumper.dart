@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flipoff/game/components/ball.dart';
+import 'package:flipoff/game/components/score_popup.dart';
 import 'package:flipoff/game/flipoff_game.dart';
 
 /// A static glassmorphic circular bumper component.
@@ -94,6 +95,11 @@ class Bumper extends BodyComponent<FlipoffGame> with ContactCallbacks {
       // Trigger visual scaling pulse and glow highlight
       _pulseScale = 1.25;
       _pulseGlow = 1.0;
+
+      // Award score with active multiplier
+      final points = 50 * game.scoreMultiplierNotifier.value;
+      game.scoreNotifier.value += points;
+      game.world.add(ScorePopup(text: '+$points', position: body.position.clone()));
 
       // Haptic bump collision feedback
       HapticFeedback.lightImpact();

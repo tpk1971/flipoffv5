@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui' show ImageFilter;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -5,7 +6,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flipoff/game/flipoff_game.dart';
 import 'package:flipoff/game/splash_page.dart';
 import 'package:flipoff/game/audio_controller.dart';
@@ -176,12 +176,44 @@ class GameHud extends StatelessWidget {
                   },
                 ),
 
+                // Active Multiball Score Multiplier Badge
+                ValueListenableBuilder<int>(
+                  valueListenable: game.scoreMultiplierNotifier,
+                  builder: (context, multiplier, _) {
+                    if (multiplier <= 1) return const SizedBox.shrink();
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFD700).withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFFFD700), width: 1.2),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x66FFD700),
+                            blurRadius: 6.0,
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        '${multiplier}x MULTI',
+                        style: const TextStyle(
+                          color: Color(0xFFFFD700),
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.0,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+
                 // Lives indicators (balls row)
                 ValueListenableBuilder<int>(
                   valueListenable: game.livesNotifier,
                   builder: (context, lives, _) {
+                    final displayCount = math.max(3, lives);
                     return Row(
-                      children: List.generate(15, (index) {
+                      children: List.generate(displayCount, (index) {
                         final isActive = index < lives;
                         return Container(
                           margin: const EdgeInsets.symmetric(horizontal: 2.0),

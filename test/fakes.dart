@@ -1,5 +1,8 @@
+// ignore_for_file: subtype_of_sealed_class
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// A fake implementation of [FirebaseAuth] that operates entirely in memory
@@ -36,17 +39,15 @@ class FakeFirebaseAuth extends Fake implements FirebaseAuth {
 
 /// A fake implementation of [User] that simulates a Firebase user session.
 class FakeUser extends Fake implements User {
-  final String _uid;
+  @override
+  final String uid;
 
   /// Creates a [FakeUser] with the specified [uid].
-  FakeUser({required String uid}) : _uid = uid;
-
-  @override
-  String get uid => _uid;
+  FakeUser({required this.uid});
 
   @override
   Future<String> getIdToken([bool forceRefresh = false]) async {
-    if (_uid == 'invalid_token_uid') {
+    if (uid == 'invalid_token_uid') {
       throw FirebaseAuthException(
         code: 'user-token-expired',
         message: 'INVALID_REFRESH_TOKEN',
@@ -135,3 +136,6 @@ class FakeDocumentSnapshot extends Fake implements DocumentSnapshot<Map<String, 
   @override
   Map<String, dynamic>? data() => _data;
 }
+
+/// A fake implementation of [Contact] for contact callback unit testing.
+class FakeContact extends Fake implements Contact {}

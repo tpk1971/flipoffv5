@@ -10,7 +10,7 @@ import 'package:flipoff/game/flipoff_game.dart';
 /// A static crystal target component that the ball collides with.
 ///
 /// Hitting this target deactivates/destroys it, registers scoring,
-/// and updates the active level objective.
+/// and updates the active level objective or triggers multiball.
 class Target extends BodyComponent<FlipoffGame> with ContactCallbacks {
   /// The local position of this target in the room's coordinate system.
   final Vector2 initialPosition;
@@ -18,10 +18,14 @@ class Target extends BodyComponent<FlipoffGame> with ContactCallbacks {
   /// Whether this target contains a bonus life.
   final bool isBonusLife;
 
+  /// Whether this target triggers a multiball frenzy upon contact.
+  final bool isMultiballTarget;
+
   /// Creates a target component at the specified [initialPosition].
   Target({
     required this.initialPosition,
     this.isBonusLife = false,
+    this.isMultiballTarget = false,
   });
 
   /// The glassmorphic/neon fill paint for the target.
@@ -64,8 +68,10 @@ class Target extends BodyComponent<FlipoffGame> with ContactCallbacks {
   @override
   void render(Canvas canvas) {
     super.render(canvas);
-    // Draw bonus targets in vibrant neon green, standard targets in the active room theme color
-    final themeColor = isBonusLife ? const Color(0xFF00FF66) : game.activeTheme.targetColor;
+    // Draw multiball targets in glowing gold, bonus targets in neon green, standard targets in room theme color
+    final themeColor = isMultiballTarget
+        ? const Color(0xFFFFD700)
+        : (isBonusLife ? const Color(0xFF00FF66) : game.activeTheme.targetColor);
     _paint.color = themeColor.withValues(alpha: 0.6); // Semi-transparent glass fill
     _borderPaint.color = themeColor; // Full glowing neon border
 
@@ -80,12 +86,19 @@ class Target extends BodyComponent<FlipoffGame> with ContactCallbacks {
     super.beginContact(other, contact);
     if (other is Ball) {
       final pos = body.position.clone();
-      final themeColor = isBonusLife ? const Color(0xFF00FF66) : game.activeTheme.targetColor;
+      final multiplier = game.scoreMultiplierNotifier.value;
+      final themeColor = isMultiballTarget
+          ? const Color(0xFFFFD700)
+          : (isBonusLife ? const Color(0xFF00FF66) : game.activeTheme.targetColor);
 
-      // Award base score
-      game.scoreNotifier.value += 100;
+      final basePoints = isMultiballTarget ? 250 : 100;
+      final points = basePoints * multiplier;
+      game.scoreNotifier.value += points;
 
-      if (isBonusLife) {
+      if (isMultiballTarget) {
+        game.world.add(ScorePopup(text: '+$points MULTIBALL!', position: pos));
+        game.triggerMultiball();
+      } else if (isBonusLife) {
         final roomIndex = game.roomManager.currentRoomId == 'room_1' ? 0 : 1;
         final yOffset = roomIndex * -16.0;
 
@@ -101,11 +114,11 @@ class Target extends BodyComponent<FlipoffGame> with ContactCallbacks {
           game.livesNotifier.value++;
         } else {
           // Max lives bonus points
-          game.scoreNotifier.value += 500;
-          game.world.add(ScorePopup(text: '+500 MAX LIVES', position: pos));
+          game.scoreNotifier.value += 500 * multiplier;
+          game.world.add(ScorePopup(text: '+${500 * multiplier} MAX LIVES', position: pos));
         }
       } else {
-        game.world.add(ScorePopup(text: '+100', position: pos));
+        game.world.add(ScorePopup(text: '+$points', position: pos));
       }
 
       // Spawn radial spark particles utilizing active theme color

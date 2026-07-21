@@ -86,10 +86,23 @@ class RoomLayout extends Component {
     final targetsList = config['targets'] as List<dynamic>? ?? [];
     final math.Random random = math.Random();
     final bonusIndices = <int>{};
+    int? multiballIndex;
+
     if (targetsList.isNotEmpty) {
-      final int numBonus = math.min(3, targetsList.length);
+      // Allow maximum 1 bonus life target per room layout
+      final int numBonus = math.min(1, targetsList.length);
       while (bonusIndices.length < numBonus) {
         bonusIndices.add(random.nextInt(targetsList.length));
+      }
+
+      // Designate 1 target as the Multiball Target
+      final candidates = List<int>.generate(targetsList.length, (idx) => idx)
+          .where((idx) => !bonusIndices.contains(idx))
+          .toList();
+      if (candidates.isNotEmpty) {
+        multiballIndex = candidates[random.nextInt(candidates.length)];
+      } else {
+        multiballIndex = 0;
       }
     }
 
@@ -98,10 +111,12 @@ class RoomLayout extends Component {
       final x = (targetData['x'] as num).toDouble();
       final y = (targetData['y'] as num).toDouble();
       final isBonusLife = bonusIndices.contains(i);
+      final isMultiballTarget = i == multiballIndex;
       await add(
         Target(
           initialPosition: Vector2(x, y + yOffset),
           isBonusLife: isBonusLife,
+          isMultiballTarget: isMultiballTarget,
         ),
       );
     }

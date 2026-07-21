@@ -7,7 +7,7 @@ void main() {
   group('Lives and Score State Tests', () {
     test('Initializes with default state values', () {
       final game = FlipoffGame();
-      expect(game.livesNotifier.value, equals(10));
+      expect(game.livesNotifier.value, equals(3));
       expect(game.scoreNotifier.value, equals(0));
       expect(game.isGameOverNotifier.value, isFalse);
     });
@@ -20,7 +20,7 @@ void main() {
 
       game.resetGame();
 
-      expect(game.livesNotifier.value, equals(10));
+      expect(game.livesNotifier.value, equals(3));
       expect(game.scoreNotifier.value, equals(0));
       expect(game.isGameOverNotifier.value, isFalse);
     });
@@ -36,7 +36,7 @@ void main() {
       if (game.livesNotifier.value < 15) {
         game.livesNotifier.value++;
       }
-      expect(game.livesNotifier.value, equals(11));
+      expect(game.livesNotifier.value, equals(4));
 
       // Bonus target hit at max lives (15)
       game.livesNotifier.value = 15;
