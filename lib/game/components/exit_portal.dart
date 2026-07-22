@@ -176,7 +176,7 @@ class ExitPortal extends BodyComponent<FlipoffGame> with ContactCallbacks {
   void beginContact(Object other, Contact contact) {
     super.beginContact(other, contact);
     if (_unlocked && other is Ball) {
-      game.roomManager.onPortalEntered();
+      game.roomManager.onPortalEntered(other);
     }
   }
 }

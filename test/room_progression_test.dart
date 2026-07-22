@@ -20,6 +20,9 @@ void main() {
     );
     await tester.pump();
 
+    // Wait for the Flame game engine to be fully loaded and components mounted
+    await game.ready();
+
     // Allow async assets to load and children components to mount
     for (int i = 0; i < 10; i++) {
       game.update(0.016);
@@ -44,7 +47,7 @@ void main() {
     expect(game.roomManager.activeLayout!.portal.unlocked, isTrue, reason: 'Portal should unlock when targets are cleared');
 
     // 3. Trigger exit portal entrance and verify room transition sequence
-    game.roomManager.onPortalEntered();
+    game.roomManager.onPortalEntered(game.ball);
 
     // The transition is deferred to the update loop. Step the game loop.
     // We step multiple frames to let the asset loads complete and new layout render.
@@ -57,6 +60,7 @@ void main() {
     // 4. Verify transition to Room 2 was completed
     expect(game.roomManager.currentRoomId, equals('room_2'), reason: 'Should load room_2 after entering portal');
     expect(game.roomManager.remainingTargets, equals(4), reason: 'Room 2 should start with 4 targets');
+    expect(game.livesNotifier.value, equals(3), reason: 'Transitioning rooms should not deduct a life');
     expect(game.roomManager.activeLayout!.roomIndex, equals(1), reason: 'Room 2 offset index is 1');
     expect(game.roomManager.activeLayout!.yOffset, equals(-16.0), reason: 'Room 2 offset is -16m');
 

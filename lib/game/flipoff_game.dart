@@ -338,6 +338,12 @@ class FlipoffGame extends Forge2DGame with TapCallbacks {
     // If the game is already in a game-over state, bypass checks
     if (isGameOverNotifier.value) return;
 
+    // Bypass check if a room transition is pending or the camera is panning
+    final hasRoomManager = isLoaded && children.whereType<RoomManager>().isNotEmpty;
+    if (hasRoomManager && (roomManager.isTransitionPending || roomManager.isCameraPanning)) {
+      return;
+    }
+
     final currentBalls = activeBalls;
     if (currentBalls.isEmpty) return;
 
@@ -346,7 +352,6 @@ class FlipoffGame extends Forge2DGame with TapCallbacks {
     const maxX = 10.5;
 
     // The vertical boundaries depend on the active room index
-    final hasRoomManager = isLoaded && children.whereType<RoomManager>().isNotEmpty;
     final roomIndex = (hasRoomManager && roomManager.currentRoomId == 'room_2') ? 1 : 0;
     final yOffset = roomIndex * -16.0;
 
@@ -354,8 +359,9 @@ class FlipoffGame extends Forge2DGame with TapCallbacks {
     final minY = yOffset - 2.5;
     final maxY = yOffset + 18.5;
 
+    final removedBalls = <Ball>{};
     for (final b in currentBalls) {
-      if (!b.isMounted) continue;
+      if (!b.isMounted || removedBalls.contains(b)) continue;
       final pos = b.body.position;
 
       if (pos.x < minX || pos.x > maxX || pos.y < minY || pos.y > maxY) {
@@ -363,11 +369,22 @@ class FlipoffGame extends Forge2DGame with TapCallbacks {
 
         if (ballSaverTimeRemaining > 0.0) {
           requestShieldReset();
-        } else if (currentBalls.length > 1) {
+        } else if (currentBalls.length - removedBalls.length > 1) {
           // Multiball drain safety: remove individual ball without deducting life
           queueSfx('sfx_gutter.wav');
-          b.removeFromParent();
-          scoreMultiplierNotifier.value = math.max(1, currentBalls.length - 1);
+          if (b == ball) {
+            // Find another active ball that is not the main ball and has not been removed yet
+            final otherBall = currentBalls.firstWhere((x) => x != ball && x.isMounted && !removedBalls.contains(x));
+            ball.body.setTransform(otherBall.body.position, otherBall.body.angle);
+            ball.body.linearVelocity = otherBall.body.linearVelocity;
+            ball.body.angularVelocity = otherBall.body.angularVelocity;
+            otherBall.removeFromParent();
+            removedBalls.add(otherBall);
+          } else {
+            b.removeFromParent();
+            removedBalls.add(b);
+          }
+          scoreMultiplierNotifier.value = math.max(1, currentBalls.length - removedBalls.length);
         } else {
           // Final ball drain: deduct 1 life
           queueSfx('sfx_gutter.wav');

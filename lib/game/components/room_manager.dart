@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flame/components.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flipoff/game/components/room_layout.dart';
+import 'package:flipoff/game/components/ball.dart';
 import 'package:flipoff/game/components/target.dart';
 import 'package:flipoff/game/components/level_up_popup.dart';
 import 'package:flipoff/game/audio_controller.dart';
@@ -80,14 +81,29 @@ class RoomManager extends Component with HasGameReference<FlipoffGame> {
   /// Flags if a transition hold is currently pending.
   bool get isTransitionPending => _isTransitionPending;
 
-  /// Callback when the ball successfully triggers the active exit portal.
-  void onPortalEntered() {
+  /// Callback when a [enteringBall] successfully triggers the active exit portal.
+  ///
+  /// Caches the active balls count, swaps the main ball to the portal position if needed,
+  /// removes extra balls, freezes the main ball in place, and starts the level up sequence.
+  void onPortalEntered(Ball enteringBall) {
     final nextRoomId = _activeLayout?.config['portal']['nextRoomIdId'] ??
         _activeLayout?.config['portal']['nextRoomId'] ??
         'room_1';
 
     // Capture the count of active balls currently in play to persist across room transitions
     _carriedBallCount = math.max(1, game.activeBalls.length);
+
+    // Swap the main ball with the entering ball if they differ, so the main ball is preserved at the portal
+    if (enteringBall != game.ball) {
+      game.ball.body.setTransform(enteringBall.body.position, enteringBall.body.angle);
+      enteringBall.removeFromParent();
+    }
+
+    // Clean up any remaining extra balls immediately upon level completion to avoid background drains
+    final extraBalls = game.activeBalls.where((b) => b != game.ball).toList();
+    for (final extra in extraBalls) {
+      extra.removeFromParent();
+    }
 
     // Initiate Phase 1: 1.0 second hold on current room before panning
     _pendingRoomId = nextRoomId;
