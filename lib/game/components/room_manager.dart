@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flame/components.dart';
+import 'package:flame_forge2d/flame_forge2d.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flipoff/game/components/room_layout.dart';
 import 'package:flipoff/game/components/ball.dart';
@@ -81,11 +83,23 @@ class RoomManager extends Component with HasGameReference<FlipoffGame> {
   /// Flags if a transition hold is currently pending.
   bool get isTransitionPending => _isTransitionPending;
 
+  /// Returns the current transition hold timer value.
+  double get transitionHoldTimer => _transitionHoldTimer;
+
+  bool _shouldProcessPortalEntry = false;
+  Ball? _portalEnteringBall;
+
   /// Callback when a [enteringBall] successfully triggers the active exit portal.
   ///
-  /// Caches the active balls count, swaps the main ball to the portal position if needed,
-  /// removes extra balls, freezes the main ball in place, and starts the level up sequence.
+  /// Defers processing until the next update tick to avoid modifying physics bodies
+  /// during the Box2D solver phase (when the world is locked).
   void onPortalEntered(Ball enteringBall) {
+    if (_isTransitionPending || _isCameraPanning || _shouldProcessPortalEntry) return;
+    _portalEnteringBall = enteringBall;
+    _shouldProcessPortalEntry = true;
+  }
+
+  void _handlePortalEntered(Ball enteringBall) {
     final nextRoomId = _activeLayout?.config['portal']['nextRoomIdId'] ??
         _activeLayout?.config['portal']['nextRoomId'] ??
         'room_1';
@@ -105,14 +119,15 @@ class RoomManager extends Component with HasGameReference<FlipoffGame> {
       extra.removeFromParent();
     }
 
+    // Freeze primary ball in portal by changing body type to static and clearing speeds
+    game.ball.body.setType(BodyType.static);
+    game.ball.body.linearVelocity = Vector2.zero();
+    game.ball.body.angularVelocity = 0.0;
+
     // Initiate Phase 1: 1.0 second hold on current room before panning
     _pendingRoomId = nextRoomId;
     _isTransitionPending = true;
     _transitionHoldTimer = 1.0;
-
-    // Freeze primary ball in portal to avoid falling/rolling
-    game.ball.body.linearVelocity = Vector2.zero();
-    game.ball.body.angularVelocity = 0.0;
 
     // Spawn "LEVEL UP!" on the current room viewport
     final currentRoomIndex = _currentRoomId == 'room_1' ? 0 : 1;
@@ -174,6 +189,7 @@ class RoomManager extends Component with HasGameReference<FlipoffGame> {
 
   /// Helper method to execute structural updates and room loading asynchronously.
   Future<void> _performTransition(String nextRoomId, Map<String, dynamic> config) async {
+    debugPrint('RoomManager: Starting _performTransition to $nextRoomId');
     final oldLayout = _activeLayout;
     _currentRoomId = nextRoomId;
 
@@ -182,16 +198,21 @@ class RoomManager extends Component with HasGameReference<FlipoffGame> {
 
     // Save carried ball count for deferred spawn
     _deferredCarriedBallCount = _carriedBallCount;
+    debugPrint('RoomManager: Carried ball count: $_deferredCarriedBallCount');
 
     // Create and add the new layout
     final newLayout = RoomLayout(roomIndex: roomIndex, config: config);
+    debugPrint('RoomManager: Awaiting world.add(newLayout)');
     await game.world.add(newLayout);
+    debugPrint('RoomManager: Completed world.add(newLayout)');
     _activeLayout = newLayout;
     game.activeTheme = newLayout.theme;
 
     if (_remainingTargets == 0) {
       newLayout.portal.unlock();
     }
+
+    _isTransitionPending = false;
 
     // Initiate Phase 2: Start 1.0s Camera Easing Pan to new target viewport
     _panStartPos = game.camera.viewfinder.position.clone();
@@ -205,8 +226,10 @@ class RoomManager extends Component with HasGameReference<FlipoffGame> {
     _deferredSpawnX = (spawnPos[0] as num).toDouble();
     _deferredSpawnY = (spawnPos[1] as num).toDouble();
     _deferredRoomIndex = roomIndex;
+    debugPrint('RoomManager: Cached spawn coordinate: ($_deferredSpawnX, $_deferredSpawnY) for room index $roomIndex');
 
     // Hide/park the ball off-screen with no speed to prevent early collision
+    debugPrint('RoomManager: Parking ball off-screen. ball.isMounted = ${game.ball.isMounted}');
     game.ball.body.setTransform(Vector2(-100.0, -100.0), 0.0);
     game.ball.body.linearVelocity = Vector2.zero();
     game.ball.body.angularVelocity = 0.0;
@@ -222,6 +245,14 @@ class RoomManager extends Component with HasGameReference<FlipoffGame> {
 
   @override
   void update(double dt) {
+    // Process deferred portal entry outside Box2D contact step
+    if (_shouldProcessPortalEntry && _portalEnteringBall != null) {
+      _shouldProcessPortalEntry = false;
+      final ball = _portalEnteringBall!;
+      _portalEnteringBall = null;
+      _handlePortalEntered(ball);
+    }
+
     super.update(dt);
 
     // Target safety audit: verify if active room has 0 remaining mounted targets, unlocking the portal
@@ -242,10 +273,12 @@ class RoomManager extends Component with HasGameReference<FlipoffGame> {
       game.ball.body.linearVelocity = Vector2.zero();
       game.ball.body.angularVelocity = 0.0;
 
-      _transitionHoldTimer -= dt;
-      if (_transitionHoldTimer <= 0.0) {
-        _isTransitionPending = false;
-        requestRoomTransition(_pendingRoomId);
+      if (_transitionHoldTimer > 0.0) {
+        _transitionHoldTimer -= dt;
+        if (_transitionHoldTimer <= 0.0) {
+          _transitionHoldTimer = 0.0;
+          requestRoomTransition(_pendingRoomId);
+        }
       }
     }
 
@@ -260,11 +293,21 @@ class RoomManager extends Component with HasGameReference<FlipoffGame> {
 
       if (_cameraPanProgress >= 1.0) {
         _isCameraPanning = false;
+        debugPrint('RoomManager: Camera pan complete.');
 
-        // Pan complete, launch primary ball and trigger 5s gutter shield protection
-        game.ball.body.setTransform(Vector2(_deferredSpawnX, _deferredSpawnY + _deferredRoomIndex * -16.0), 0.0);
+        // Update the camera target position permanently to the new room center
+        game.cameraTargetPosition = _panTargetPos;
+        game.camera.viewfinder.position = _panTargetPos;
+
+        final targetSpawn = Vector2(_deferredSpawnX, _deferredSpawnY + _deferredRoomIndex * -16.0);
+        debugPrint('RoomManager: Setting ball position to targetSpawn: $targetSpawn');
+
+        // Restore ball to dynamic body type and place it at spawn coordinate
+        game.ball.body.setType(BodyType.dynamic);
+        game.ball.body.setTransform(targetSpawn, 0.0);
         game.ball.body.linearVelocity = Vector2.zero();
         game.ball.body.angularVelocity = 0.0;
+        game.ball.body.setAwake(true);
         game.ballSaverTimeRemaining = 5.0;
 
         // Persist multiball: if carried ball count > 1, release additional balls

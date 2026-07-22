@@ -9,6 +9,9 @@ class GameAudioController {
   /// Singleton instance.
   static final GameAudioController instance = GameAudioController._internal();
 
+  /// Static flag to completely bypass/disable audio loading and play operations (useful in unit/widget tests).
+  static bool enableAudio = true;
+
   /// Keys for SharedPreferences.
   static const String _musicMuteKey = 'music_muted';
   static const String _sfxMuteKey = 'sfx_muted';
@@ -29,6 +32,7 @@ class GameAudioController {
 
   /// Initializes the audio controller and loads mute preferences from cache.
   Future<void> initialize() async {
+    if (!enableAudio) return;
     if (_initialized) return;
     _prefs = await SharedPreferences.getInstance();
     isMusicMuted = _prefs.getBool(_musicMuteKey) ?? false;
@@ -42,6 +46,7 @@ class GameAudioController {
 
   /// Toggles the background music mute state and saves to cache.
   Future<void> toggleMusic() async {
+    if (!enableAudio) return;
     isMusicMuted = !isMusicMuted;
     await _prefs.setBool(_musicMuteKey, isMusicMuted);
 
@@ -55,12 +60,14 @@ class GameAudioController {
 
   /// Toggles the sound effects mute state and saves to cache.
   Future<void> toggleSfx() async {
+    if (!enableAudio) return;
     isSfxMuted = !isSfxMuted;
     await _prefs.setBool(_sfxMuteKey, isSfxMuted);
   }
 
   /// Rotates background music tracks based on the room index [roomIndex].
   Future<void> playMusicForRoom(int roomIndex) async {
+    if (!enableAudio) return;
     if (!_initialized) await initialize();
 
     // Map 6 loops rotating by roomIndex
@@ -84,6 +91,7 @@ class GameAudioController {
 
   /// Triggers a sound effect by its [name] (e.g. 'sfx_target.wav').
   Future<void> playSfx(String name) async {
+    if (!enableAudio) return;
     if (!_initialized) await initialize();
     if (isSfxMuted || isPaused) return;
 
@@ -92,6 +100,7 @@ class GameAudioController {
 
   /// Stops all active audio playback (useful on quit).
   Future<void> stopAll() async {
+    if (!enableAudio) return;
     if (FlameAudio.bgm.isPlaying) {
       await FlameAudio.bgm.stop();
     }
@@ -101,6 +110,7 @@ class GameAudioController {
 
   /// Pauses the background music.
   void pauseMusic() {
+    if (!enableAudio) return;
     if (_initialized && !isMusicMuted) {
       FlameAudio.bgm.pause();
     }
@@ -108,6 +118,7 @@ class GameAudioController {
 
   /// Resumes the background music loop.
   void resumeMusic() {
+    if (!enableAudio) return;
     if (_initialized && !isMusicMuted) {
       FlameAudio.bgm.resume();
     }

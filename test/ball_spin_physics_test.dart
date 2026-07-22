@@ -20,6 +20,7 @@ void main() {
       ),
     );
     await tester.pump();
+    await game.ready();
     for (int i = 0; i < 10; i++) {
       game.update(0.016);
       await tester.pump(const Duration(milliseconds: 16));

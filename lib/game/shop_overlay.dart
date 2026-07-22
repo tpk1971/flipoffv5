@@ -187,22 +187,23 @@ class ShopOverlay extends StatelessWidget {
               ),
             )
           else
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   '$tokenCount Premium Tokens',
                   style: const TextStyle(
-                    fontSize: 16,
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
                 ),
+                const SizedBox(height: 4.0),
                 Text(
                   '$freeGames Free Daily Plays left',
                   style: const TextStyle(
                     fontSize: 12,
-                    color: Colors.white70,
+                    color: Colors.white60,
                   ),
                 ),
               ],

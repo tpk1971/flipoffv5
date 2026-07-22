@@ -8,7 +8,6 @@ import 'package:flipoff/game/components/score_popup.dart';
 import 'package:flipoff/game/components/spark_particle.dart';
 import 'package:flipoff/game/components/bonus_life_effects.dart';
 import 'package:flipoff/game/flipoff_game.dart';
-import 'package:flipoff/game/components/room_manager.dart';
 
 /// A static crystal target component that the ball collides with.
 ///
@@ -163,7 +162,7 @@ class Target extends BodyComponent<FlipoffGame> with ContactCallbacks {
         game.world.add(ScorePopup(text: '+$points MULTIBALL!', position: pos));
         game.triggerMultiball();
       } else if (isBonusLife) {
-        final roomIndex = (game.isLoaded && game.children.whereType<RoomManager>().isNotEmpty && game.roomManager.currentRoomId == 'room_2') ? 1 : 0;
+        final roomIndex = game.hasRoomManager ? (game.roomManager.activeLayout?.roomIndex ?? 0) : 0;
         final yOffset = roomIndex * -16.0;
 
         // Spawn "+EXTRA LIFE!" centered popup text
@@ -196,7 +195,7 @@ class Target extends BodyComponent<FlipoffGame> with ContactCallbacks {
       removeFromParent();
 
       // Notify the active room manager
-      if (game.isLoaded && game.children.whereType<RoomManager>().isNotEmpty) {
+      if (game.hasRoomManager) {
         game.roomManager.onTargetHit();
       }
     }

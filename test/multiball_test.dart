@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flame/game.dart';
+import 'package:flipoff/game/audio_controller.dart';
 import 'package:flipoff/game/flipoff_game.dart';
 import 'package:flipoff/game/components/target.dart';
 import 'fakes.dart';
@@ -11,6 +12,10 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('Multiball Mode Tests', () {
+    setUp(() {
+      GameAudioController.enableAudio = false;
+    });
+
     testWidgets('triggerMultiball spawns 3 balls and sets 3x score multiplier', (WidgetTester tester) async {
       final game = FlipoffGame();
       await tester.pumpWidget(

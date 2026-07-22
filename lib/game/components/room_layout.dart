@@ -27,7 +27,12 @@ class RoomLayout extends Component {
   RoomLayout({
     required this.roomIndex,
     required this.config,
-  });
+  }) {
+    flipper = DoubleWideFlipper(
+      initialPosition: Vector2(1.5, 13.0 + yOffset),
+      length: 6.0,
+    );
+  }
 
   /// The vertical coordinate offset for all entities in this room.
   double get yOffset => roomIndex * -16.0;
@@ -62,10 +67,6 @@ class RoomLayout extends Component {
     await add(GutterSensor(yOffset: yOffset));
 
     // Add asymmetrical flipper with offset
-    flipper = DoubleWideFlipper(
-      initialPosition: Vector2(1.5, 13.0 + yOffset),
-      length: 6.0,
-    );
     await add(flipper);
 
     // Add bumpers

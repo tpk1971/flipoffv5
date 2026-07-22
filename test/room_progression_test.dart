@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flame/game.dart';
+import 'package:flipoff/game/audio_controller.dart';
 import 'package:flipoff/game/flipoff_game.dart';
 
 void main() {
@@ -8,6 +9,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('RoomManager should load configurations and transition levels', (WidgetTester tester) async {
+    GameAudioController.enableAudio = false;
     final game = FlipoffGame();
     await tester.pumpWidget(
       MediaQuery(
@@ -49,13 +51,19 @@ void main() {
     // 3. Trigger exit portal entrance and verify room transition sequence
     game.roomManager.onPortalEntered(game.ball);
 
-    // The transition is deferred to the update loop. Step the game loop.
-    // We step multiple frames to let the asset loads complete and new layout render.
-    for (int i = 0; i < 10; i++) {
-      // Step game and microtask queue so rootBundle.loadString Future resolves
-      game.update(0.016);
-      await tester.pump(const Duration(milliseconds: 16));
-    }
+    // Verify that during Phase 1 (first few frames), camera Y remains at 8.0 (Room 1 center)
+    // because snap is de-escalated.
+    game.update(0.016);
+    await tester.pump(const Duration(milliseconds: 16));
+    expect(game.camera.viewfinder.position.y, equals(8.0), reason: 'Camera should not snap to Room 2 instantly during hold');
+
+    // Run the remaining transition updates (150 updates total)
+    await tester.runAsync(() async {
+      for (int i = 0; i < 149; i++) {
+        game.update(0.016);
+        await Future.delayed(const Duration(milliseconds: 16));
+      }
+    });
 
     // 4. Verify transition to Room 2 was completed
     expect(game.roomManager.currentRoomId, equals('room_2'), reason: 'Should load room_2 after entering portal');
